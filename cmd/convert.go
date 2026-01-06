@@ -2,18 +2,17 @@ package main
 
 import (
 	"encoding/xml"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
 
-	"fmt"
-
-	"lvfstest/cli"
-	"lvfstest/types"
-	"lvfstest/utils"
-	"lvfstest/vendors"
-
 	"github.com/alecthomas/kong"
+
+	"github.com/criteo/firmirror/cli"
+	"github.com/criteo/firmirror/types"
+	"github.com/criteo/firmirror/utils"
+	"github.com/criteo/firmirror/vendors"
 )
 
 func buildPackage(tmpDir string, appstream *types.Component) error {

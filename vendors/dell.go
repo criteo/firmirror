@@ -4,11 +4,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"lvfstest/types"
-	"lvfstest/utils"
 	"path"
 	"strings"
 
+	"github.com/criteo/firmirror/types"
+	"github.com/criteo/firmirror/utils"
 	"github.com/google/uuid"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
@@ -128,7 +128,7 @@ func HandleDellFirmware(fw types.DellSoftwareComponent) (*types.Component, error
 	for _, brand := range fw.SupportedSystems {
 		for _, system := range brand.Models {
 			for _, dev := range fw.SupportedDevices {
-				guids = append(guids, uuid.NewSHA1(uuid.NameSpaceDNS, []byte(fmt.Sprintf("REDFISH\\VENDOR_Dell&SYSTEMID_%s&SOFTWAREID_%s", system.SystemID, dev.ComponentID))).String())
+				guids = append(guids, uuid.NewSHA1(uuid.NameSpaceDNS, fmt.Appendf(nil, "REDFISH\\VENDOR_Dell&SYSTEMID_%s&SOFTWAREID_%s", system.SystemID, dev.ComponentID)).String())
 			}
 		}
 	}

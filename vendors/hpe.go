@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"lvfstest/types"
-	"lvfstest/utils"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/criteo/firmirror/types"
+	"github.com/criteo/firmirror/utils"
 )
 
 func hpeGetString(strings []types.HPETranslations, language string) (string, error) {

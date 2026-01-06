@@ -38,7 +38,7 @@ type HPEPackage struct {
 	Category               []HPECategory             `json:"category"`
 	Description            []HPETranslations         `json:"description"`
 	Divisions              []HPEDivision             `json:"divisions"`
-	Files                  map[string]interface{}    `json:"files"`
+	Files                  map[string]any            `json:"files"`
 	ID                     HPEID                     `json:"id"`
 	Installation           HPEInstallation           `json:"installation"`
 	InstallationDependency HPEInstallationDependency `json:"installation_dependency"`
