@@ -1,4 +1,4 @@
-package vendors
+package hpe
 
 import (
 	"archive/zip"
@@ -13,7 +13,7 @@ import (
 	"github.com/criteo/firmirror/utils"
 )
 
-func hpeGetString(strings []types.HPETranslations, language string) (string, error) {
+func hpeGetString(strings []HPETranslations, language string) (string, error) {
 	for _, l := range strings {
 		if l.Lang == language {
 			return l.XLate, nil
@@ -43,7 +43,7 @@ func HandleHPEFirmware(filename string) (*types.Component, error) {
 
 	byteValue, _ := io.ReadAll(reader)
 
-	var payload types.HPEPayload
+	var payload HPEPayload
 
 	err = json.Unmarshal(byteValue, &payload)
 	if err != nil {
@@ -66,7 +66,7 @@ func HandleHPEFirmware(filename string) (*types.Component, error) {
 // hpeFWToAppStream converts an HPE firmware payload to an AppStream component.
 // Note: we make the assumption that all devices in the payload will have the same version
 // as well as the install duration.
-func hpeFWToAppStream(fw types.HPEPayload) (*types.Component, error) {
+func hpeFWToAppStream(fw HPEPayload) (*types.Component, error) {
 	out := types.Component{}
 
 	out.Type = "firmware"

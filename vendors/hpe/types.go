@@ -1,4 +1,4 @@
-package types
+package hpe
 
 type HPEPayload struct {
 	DeviceClass   string     `json:"DeviceClass"`

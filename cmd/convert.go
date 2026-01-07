@@ -12,7 +12,8 @@ import (
 	"github.com/criteo/firmirror/cli"
 	"github.com/criteo/firmirror/types"
 	"github.com/criteo/firmirror/utils"
-	"github.com/criteo/firmirror/vendors"
+	"github.com/criteo/firmirror/vendors/dell"
+	"github.com/criteo/firmirror/vendors/hpe"
 )
 
 func buildPackage(tmpDir string, appstream *types.Component) error {
@@ -58,7 +59,7 @@ func main() {
 		panic(ctx.Command())
 	}
 
-	tmpDir, err := utils.GetTmpDir()
+	tmpDir, err := os.MkdirTemp(".", "firmirror-*")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -71,7 +72,7 @@ func main() {
 	defer os.RemoveAll(tmpDir)
 	os.Remove(FILENAME + ".cab")
 
-	appstream, err := vendors.HandleHPEFirmware(FILENAME)
+	appstream, err := hpe.HandleHPEFirmware(FILENAME)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -83,7 +84,7 @@ func main() {
 		return
 	}
 
-	dellCatalog, err := vendors.DellFetchCatalog()
+	dellCatalog, err := dell.DellFetchCatalog()
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -92,7 +93,7 @@ func main() {
 	dellSystems := map[string]bool{
 		"0C60": true,
 	}
-	toFetch := []types.DellSoftwareComponent{}
+	toFetch := []dell.DellSoftwareComponent{}
 	for _, swComponent := range dellCatalog.SoftwareComponents {
 		// Only select firmware, not drivers
 		if swComponent.ComponentType.Value != "FRMW" {
@@ -108,14 +109,14 @@ func main() {
 	}
 
 	// for _, fw := range toFetch {
-	tmpDir, err = utils.GetTmpDir()
-	defer os.RemoveAll(tmpDir)
+	tmpDir, err = os.MkdirTemp(".", "firmirror-*")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	vendors.DellDownloadFirmware(toFetch[44], tmpDir)
-	appstream, err = vendors.HandleDellFirmware(toFetch[44])
+	defer os.RemoveAll(tmpDir)
+	dell.DellDownloadFirmware(toFetch[44], tmpDir)
+	appstream, err = dell.HandleDellFirmware(toFetch[44])
 	if err != nil {
 		fmt.Println(err)
 		return
