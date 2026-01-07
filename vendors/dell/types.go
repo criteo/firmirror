@@ -1,4 +1,4 @@
-package types
+package dell
 
 import (
 	"encoding/xml"

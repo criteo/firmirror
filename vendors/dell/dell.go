@@ -1,6 +1,7 @@
-package vendors
+package dell
 
 import (
+	"compress/gzip"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -17,14 +18,14 @@ import (
 const CATALOG_URL = "https://dl.dell.com/catalog/catalog.xml.gz"
 
 type DellFWCatalog struct {
-	Catalog *types.DellCatalog
+	Catalog *DellCatalog
 }
 
 type DellFirmwareEntry struct {
-	DellSoftwareComponent *types.DellSoftwareComponent
+	DellSoftwareComponent *DellSoftwareComponent
 }
 
-func (dc *DellFWCatalog) New(catalog *types.DellCatalog) *DellFWCatalog {
+func (dc *DellFWCatalog) New(catalog *DellCatalog) *DellFWCatalog {
 	fwCatalog := &DellFWCatalog{
 		Catalog: catalog,
 	}
@@ -45,7 +46,7 @@ func (dfe *DellFirmwareEntry) GetFilename() string {
 	return dfe.DellSoftwareComponent.HashMD5 + "-" + path.Base(dfe.DellSoftwareComponent.Path)
 }
 
-func dellGetString(strings types.DellTranslatable, language string) (string, error) {
+func dellGetString(strings DellTranslatable, language string) (string, error) {
 	for _, l := range strings.Display {
 		if l.Lang == language {
 			return l.Value, nil
@@ -67,14 +68,14 @@ func dellGetUrgency(criticality int64) string {
 	}
 }
 
-func DellFetchCatalog() (*types.DellCatalog, error) {
+func DellFetchCatalog() (*DellCatalog, error) {
 	catalogBody, err := utils.DownloadFile(CATALOG_URL)
 	if err != nil {
 		return nil, err
 	}
 	defer catalogBody.Close()
 
-	rawCatalog, err := utils.GzipUnpack(catalogBody)
+	rawCatalog, err := gzip.NewReader(catalogBody)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func DellFetchCatalog() (*types.DellCatalog, error) {
 	// The XML decoder only reads UTF-8, so we need to convert the UTF-16 to UTF-8
 	unicodeReader := transform.NewReader(rawCatalog, unicode.BOMOverride(unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()))
 
-	var dellCatalog types.DellCatalog
+	var dellCatalog DellCatalog
 
 	xmlDecoder := xml.NewDecoder(unicodeReader)
 	xmlDecoder.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
@@ -100,7 +101,7 @@ func DellFetchCatalog() (*types.DellCatalog, error) {
 	return &dellCatalog, nil
 }
 
-func DellDownloadFirmware(fw types.DellSoftwareComponent, tmpDir string) (string, error) {
+func DellDownloadFirmware(fw DellSoftwareComponent, tmpDir string) (string, error) {
 	file, err := utils.DownloadFile(fmt.Sprintf("https://dl.dell.com/%s", fw.Path))
 	if err != nil {
 		return "", err
@@ -116,7 +117,7 @@ func DellDownloadFirmware(fw types.DellSoftwareComponent, tmpDir string) (string
 	return filepath, nil
 }
 
-func HandleDellFirmware(fw types.DellSoftwareComponent) (*types.Component, error) {
+func HandleDellFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 	out := types.Component{}
 
 	out.Type = "firmware"
