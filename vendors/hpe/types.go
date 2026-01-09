@@ -1,5 +1,33 @@
 package hpe
 
+// HPEVendor implements the Vendor interface for HPE
+type HPEVendor struct {
+	BaseURL string
+}
+
+// HPEVendor implements the Catalog interface for HPE
+type HPECatalog struct {
+	Entries map[string]HPECatalogEntry `json:",inline"`
+}
+
+// HPEFirmwareEntry implements the FirmwareEntry interface for HPE
+type HPEFirmwareEntry struct {
+	Filename     string
+	Entry        *HPECatalogEntry
+	downloadPath string // Store download path for processing
+}
+
+type HPECatalogEntry struct {
+	Date                 string   `json:"date"`
+	Description          string   `json:"description"`
+	DeviceClass          string   `json:"deviceclass"`
+	MinimumActiveVersion string   `json:"minimum_active_version"`
+	RebootRequired       string   `json:"reboot_required"`
+	ServerPowerOff       string   `json:"server_power_off"`
+	Target               []string `json:"target"`
+	Version              string   `json:"version"`
+}
+
 type HPEPayload struct {
 	DeviceClass   string     `json:"DeviceClass"`
 	Devices       HPEDevices `json:"Devices"`

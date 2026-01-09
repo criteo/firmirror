@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -13,99 +14,178 @@ import (
 	"github.com/criteo/firmirror/utils"
 )
 
-func hpeGetString(strings []HPETranslations, language string) (string, error) {
-	for _, l := range strings {
-		if l.Lang == language {
-			return l.XLate, nil
-		}
+// NewHPEVendor creates a new HPE vendor instance
+func NewHPEVendor(repo string) *HPEVendor {
+	return &HPEVendor{
+		BaseURL: "https://downloads.linux.hpe.com/SDR/repo/" + repo,
 	}
-	return "", fmt.Errorf("language not found: %s", language)
 }
 
-func HandleHPEFirmware(filename string) (*types.Component, error) {
-	r, err := zip.OpenReader(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-
-	payloadFile, err := utils.GetFileFromName("payload.json", r)
+// FetchCatalog implements the Vendor interface
+func (hv *HPEVendor) FetchCatalog() (types.Catalog, error) {
+	catalog, err := hv.fetchCatalog()
 	if err != nil {
 		return nil, err
 	}
 
-	reader, err := payloadFile.Open()
+	// Filter catalog entries based on vendor settings
+	filteredCatalog := hv.filterCatalog(catalog)
+	return filteredCatalog, nil
+}
+
+func (hv *HPEVendor) fetchCatalog() (*HPECatalog, error) {
+	indexurl := hv.BaseURL + "/current/fwrepodata/fwrepo.json"
+	jsondata, err := utils.DownloadFile(indexurl)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
-	defer reader.Close()
+	defer jsondata.Close()
 
-	byteValue, _ := io.ReadAll(reader)
+	var entries map[string]HPECatalogEntry
+	if err := json.NewDecoder(jsondata).Decode(&entries); err != nil {
+		return nil, err
+	}
+
+	catalog := &HPECatalog{
+		Entries: entries,
+	}
+	return catalog, nil
+}
+
+func (hv *HPEVendor) filterCatalog(catalog *HPECatalog) *HPECatalog {
+	filteredEntries := make(map[string]HPECatalogEntry)
+
+	for filename, entry := range catalog.Entries {
+		// Only include entries that end with .fwpkg
+		if strings.HasSuffix(filename, ".fwpkg") {
+			filteredEntries[filename] = entry
+		}
+	}
+
+	filteredCatalog := &HPECatalog{
+		Entries: filteredEntries,
+	}
+	return filteredCatalog
+}
+
+// RetrieveFirmware implements the Vendor interface
+func (hv *HPEVendor) RetrieveFirmware(entry types.FirmwareEntry, tmpDir string) (string, error) {
+	hpeEntry, ok := entry.(*HPEFirmwareEntry)
+	if !ok {
+		return "", fmt.Errorf("invalid entry type for HPE vendor")
+	}
+
+	filepath, err := hv.fetchFirmware(hpeEntry.Filename, tmpDir)
+	if err != nil {
+		return "", err
+	}
+
+	// Store the download path in the entry for later processing
+	hpeEntry.downloadPath = filepath
+	return filepath, nil
+}
+
+func (hv *HPEVendor) fetchFirmware(filename, tmpDir string) (string, error) {
+	file, err := utils.DownloadFile(hv.BaseURL + "/current/" + filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	filepath := path.Join(tmpDir, path.Base(filename))
+	err = utils.ReaderToFile(file, filepath)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath, nil
+}
+
+// ListEntries implements the Catalog interface for HPECatalog
+func (hc *HPECatalog) ListEntries() []types.FirmwareEntry {
+	entries := []types.FirmwareEntry{}
+	for filename, catalogEntry := range hc.Entries {
+		entry := catalogEntry // Create a copy to avoid pointer issues
+		entries = append(entries, &HPEFirmwareEntry{
+			Filename: filename,
+			Entry:    &entry,
+		})
+	}
+	return entries
+}
+
+// GetFilename implements the FirmwareEntry interface
+func (hfe *HPEFirmwareEntry) GetFilename() string {
+	return hfe.Filename
+}
+
+// ToAppstream implements the FirmwareEntry interface
+// HPE requires the firmware to be downloaded first, so we use the stored path
+func (hfe *HPEFirmwareEntry) ToAppstream() (*types.Component, error) {
+	if hfe.downloadPath == "" {
+		return nil, fmt.Errorf("firmware must be retrieved first using RetrieveFirmware")
+	}
+
+	payloadFile, err := readFileFromZip(hfe.downloadPath, "payload.json")
+	if err != nil {
+		return nil, err
+	}
 
 	var payload HPEPayload
-
-	err = json.Unmarshal(byteValue, &payload)
-	if err != nil {
+	if err = json.Unmarshal(payloadFile, &payload); err != nil {
 		return nil, err
 	}
 
-	appstream, err := hpeFWToAppStream(payload)
+	appstream, err := buildAppStream(payload)
 	if err != nil {
 		return nil, err
 	}
 
 	appstream.Releases[0].Checksum = types.Checksum{
-		Filename: filename,
+		Filename: hfe.Filename,
 		Target:   "content",
 	}
 
 	return appstream, nil
 }
 
-// hpeFWToAppStream converts an HPE firmware payload to an AppStream component.
+// buildAppStream converts an HPE firmware payload to an AppStream component.
 // Note: we make the assumption that all devices in the payload will have the same version
 // as well as the install duration.
-func hpeFWToAppStream(fw HPEPayload) (*types.Component, error) {
-	out := types.Component{}
-
-	out.Type = "firmware"
-
-	// TODO:
+func buildAppStream(fw HPEPayload) (*types.Component, error) {
+	out := types.Component{
+		Type:            "firmware",
+		MetadataLicense: "proprietary",
+		ProjectLicense:  "proprietary",
+	}
 
 	var devices []string
-	var guids []string
 	for _, dev := range fw.Devices.Device {
 		devices = append(devices, dev.DeviceName)
-		// TODO: properly create GUID
-		guids = append(guids, dev.Target)
+		// TODO:properly create GUID
+		// deviceclass ?
+		out.Provides = append(out.Provides, types.Firmware{
+			Type: "flashed",
+			Text: dev.Target,
+		})
 	}
 	slices.Sort(devices)
 	devices = slices.Compact(devices)
+	out.Name = strings.Join(devices[:], "/")
 
-	for _, guid := range guids {
-		out.Provides = append(out.Provides, types.Firmware{
-			Type: "flashed",
-			Text: guid,
-		})
-	}
-
-	manufacturer, err := hpeGetString(fw.Package.ManufacturerName, "en")
+	manufacturer, err := getString(fw.Package.ManufacturerName, "en")
 	if err != nil {
 		return nil, err
 	}
-
-	out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower(strings.ReplaceAll(manufacturer, " ", "")), strings.ReplaceAll(fw.Package.SwKeys[0].Name, " ", ""))
-	out.Name = strings.Join(devices[:], "/")
-
 	out.DeveloperName = manufacturer
+	out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower(strings.ReplaceAll(manufacturer, " ", "")), strings.ReplaceAll(fw.Package.SwKeys[0].Name, " ", ""))
 
 	if fw.Package.Installation.RebootRequired == "yes" {
 		out.Custom = append(out.Custom, types.Custom{
 			Key:   "LVFS::DeviceFlags",
 			Value: "skips-restart",
 		})
-		rebootMessage, err := hpeGetString(fw.Package.Installation.RebootDetails[0].Language, "en")
+		rebootMessage, err := getString(fw.Package.Installation.RebootDetails[0].Language, "en")
 		if err != nil {
 			return nil, err
 		}
@@ -116,22 +196,19 @@ func hpeFWToAppStream(fw HPEPayload) (*types.Component, error) {
 		})
 	}
 
-	summary, err := hpeGetString(fw.Package.Name, "en")
+	summary, err := getString(fw.Package.Name, "en")
 	if err != nil {
 		return nil, err
 	}
 	out.Summary = strings.ReplaceAll(strings.ReplaceAll(summary, "\t", ""), "  ", " ")
 
-	description, err := hpeGetString(fw.Package.Description, "en")
+	description, err := getString(fw.Package.Description, "en")
 	if err != nil {
 		return nil, err
 	}
 	out.Description = types.Description{
 		Value: "<p>" + description + "</p>",
 	}
-
-	out.MetadataLicense = "proprietary"
-	out.ProjectLicense = "proprietary"
 
 	releaseDate, err := time.Parse("2006-01-02T15:04:05", fw.Package.ReleaseDate)
 	if err != nil {
@@ -142,9 +219,7 @@ func hpeFWToAppStream(fw HPEPayload) (*types.Component, error) {
 		Version:         fw.Devices.Device[0].Version,
 		Date:            releaseDate.Format(time.DateOnly),
 		InstallDuration: fw.Devices.Device[0].FirmwareImages[0].InstallDurationSec,
-		Description: types.Description{
-			Value: "<p>" + description + "</p>",
-		},
+		Description:     out.Description,
 	})
 
 	for _, category := range fw.Package.Category {
@@ -168,4 +243,34 @@ func hpeFWToAppStream(fw HPEPayload) (*types.Component, error) {
 	})
 
 	return &out, nil
+}
+
+func getString(strings []HPETranslations, language string) (string, error) {
+	for _, l := range strings {
+		if l.Lang == language {
+			return l.XLate, nil
+		}
+	}
+	return "", fmt.Errorf("language not found: %s", language)
+}
+
+func readFileFromZip(zipFile, filename string) ([]byte, error) {
+	archive, err := zip.OpenReader(zipFile)
+	if err != nil {
+		return nil, err
+	}
+	defer archive.Close()
+
+	for _, f := range archive.File {
+		if f.Name == filename {
+			reader, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			defer reader.Close()
+
+			return io.ReadAll(reader)
+		}
+	}
+	return nil, fmt.Errorf("file not found: %s", filename)
 }

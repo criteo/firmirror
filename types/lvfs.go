@@ -2,6 +2,12 @@ package types
 
 import "encoding/xml"
 
+type Components struct {
+	XMLName   xml.Name    `xml:"components"`
+	Origin    string      `xml:"origin,attr"`
+	Component []Component `xml:"component"`
+}
+
 type Component struct {
 	XMLName           xml.Name    `xml:"component"`
 	Type              string      `xml:"type,attr"`

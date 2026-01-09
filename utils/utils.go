@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"archive/zip"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,15 +37,6 @@ func CopyFile(src, dst string) error {
 	}
 
 	return nil
-}
-
-func GetFileFromName(name string, zipReader *zip.ReadCloser) (*zip.File, error) {
-	for _, f := range zipReader.File {
-		if f.Name == name {
-			return f, nil
-		}
-	}
-	return nil, fmt.Errorf("file not found: %s", name)
 }
 
 func DownloadFile(url string) (io.ReadCloser, error) {

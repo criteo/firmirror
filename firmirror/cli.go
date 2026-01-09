@@ -1,4 +1,4 @@
-package cli
+package firmirror
 
 type DellFlags struct {
 	Enable     bool     `help:"Enable Dell firmware fetching." default:"false"`

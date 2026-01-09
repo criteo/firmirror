@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+// DellVendor implements the Vendor interface for Dell
+type DellVendor struct {
+	BaseURL string
+	// SystemIDs filters which system to include. If nil or empty, includes all systems. Example: ["0C60"]
+	SystemIDs []string
+}
+
 // DellCatalog represents the catalog element of a Dell catalog
 type DellCatalog struct {
 	XMLName            xml.Name                `xml:"Manifest"`
@@ -13,6 +20,12 @@ type DellCatalog struct {
 	BaseLocation       string                  `xml:"baseLocation,attr"`
 	SoftwareBundle     []DellSoftwareBundle    `xml:"SoftwareBundle"`
 	SoftwareComponents []DellSoftwareComponent `xml:"SoftwareComponent"`
+}
+
+// DellFirmwareEntry implements the FirmwareEntry interface for Dell
+type DellFirmwareEntry struct {
+	Filename              string
+	DellSoftwareComponent *DellSoftwareComponent
 }
 
 // DellSoftwareComponent represents a software component like firmware or driver

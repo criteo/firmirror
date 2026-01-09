@@ -6,9 +6,6 @@ type Vendor interface {
 	// RetrieveFirmware downloads the firmware file for the given firmware entry.
 	// For vendors like HPE, this step is required before processing.
 	RetrieveFirmware(entry FirmwareEntry, tmpDir string) (string, error)
-	// FirmwareToAppstream converts a firmware entry to an AppStream component.
-	// For vendors like Dell, this can be done directly from the catalog.
-	FirmwareToAppstream(entry FirmwareEntry) (*Component, error)
 }
 
 // Catalog represents a generic catalog of firmware entries.
@@ -22,4 +19,6 @@ type FirmwareEntry interface {
 	// GetFilename will be used to determine if the firmware has already been downloaded
 	// and if it should be processed
 	GetFilename() string
+	// ToAppstream converts this firmware entry to an AppStream component.
+	ToAppstream() (*Component, error)
 }

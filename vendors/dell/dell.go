@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/criteo/firmirror/types"
@@ -15,61 +16,28 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const CATALOG_URL = "https://dl.dell.com/catalog/catalog.xml.gz"
-
-type DellFWCatalog struct {
-	Catalog *DellCatalog
-}
-
-type DellFirmwareEntry struct {
-	DellSoftwareComponent *DellSoftwareComponent
-}
-
-func (dc *DellFWCatalog) New(catalog *DellCatalog) *DellFWCatalog {
-	fwCatalog := &DellFWCatalog{
-		Catalog: catalog,
+func NewDellVendor(systemIDs []string) *DellVendor {
+	vendor := &DellVendor{
+		BaseURL:   "https://dl.dell.com",
+		SystemIDs: systemIDs,
 	}
-	return fwCatalog
+
+	return vendor
 }
 
-func (dc *DellFWCatalog) ListEntries() []DellFirmwareEntry {
-	entries := []DellFirmwareEntry{}
-	for _, fw := range dc.Catalog.SoftwareComponents {
-		entries = append(entries, DellFirmwareEntry{
-			DellSoftwareComponent: &fw,
-		})
+func (dv *DellVendor) FetchCatalog() (types.Catalog, error) {
+	catalog, err := dv.fetchCatalog()
+	if err != nil {
+		return nil, err
 	}
-	return entries
+
+	// Filter catalog entries based on vendor settings
+	filteredCatalog := dv.filterCatalog(catalog)
+	return filteredCatalog, nil
 }
 
-func (dfe *DellFirmwareEntry) GetFilename() string {
-	return dfe.DellSoftwareComponent.HashMD5 + "-" + path.Base(dfe.DellSoftwareComponent.Path)
-}
-
-func dellGetString(strings DellTranslatable, language string) (string, error) {
-	for _, l := range strings.Display {
-		if l.Lang == language {
-			return l.Value, nil
-		}
-	}
-	return "", fmt.Errorf("language not found: %s", language)
-}
-
-func dellGetUrgency(criticality int64) string {
-	switch criticality {
-	case 1:
-		return "medium"
-	case 2:
-		return "critical"
-	case 3:
-		return "low"
-	default:
-		return "medium"
-	}
-}
-
-func DellFetchCatalog() (*DellCatalog, error) {
-	catalogBody, err := utils.DownloadFile(CATALOG_URL)
+func (dv *DellVendor) fetchCatalog() (*DellCatalog, error) {
+	catalogBody, err := utils.DownloadFile(dv.BaseURL + "/catalog/catalog.xml.gz")
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +69,48 @@ func DellFetchCatalog() (*DellCatalog, error) {
 	return &dellCatalog, nil
 }
 
-func DellDownloadFirmware(fw DellSoftwareComponent, tmpDir string) (string, error) {
-	file, err := utils.DownloadFile(fmt.Sprintf("https://dl.dell.com/%s", fw.Path))
+func (dv *DellVendor) filterCatalog(catalog *DellCatalog) *DellCatalog {
+	filteredComponents := []DellSoftwareComponent{}
+
+	for _, fw := range catalog.SoftwareComponents {
+		// Only select firmware, not drivers
+		// FIXME include BIOS ?
+		if fw.ComponentType.Value != "FRMW" {
+			continue
+		}
+
+		// If no SystemIDs filter is set, include all firmware
+		if len(dv.SystemIDs) == 0 {
+			filteredComponents = append(filteredComponents, fw)
+			continue
+		}
+
+	systemLoop:
+		for _, system := range fw.SupportedSystems {
+			for _, model := range system.Models {
+				if slices.Contains(dv.SystemIDs, model.SystemID) {
+					filteredComponents = append(filteredComponents, fw)
+					break systemLoop
+				}
+			}
+		}
+	}
+
+	filteredCatalog := *catalog // Copy the catalog
+	filteredCatalog.SoftwareComponents = filteredComponents
+	return &filteredCatalog
+}
+
+func (dv *DellVendor) RetrieveFirmware(entry types.FirmwareEntry, tmpDir string) (string, error) {
+	dellEntry, ok := entry.(*DellFirmwareEntry)
+	if !ok {
+		return "", fmt.Errorf("invalid entry type for Dell vendor")
+	}
+	return dv.downloadFirmware(*dellEntry.DellSoftwareComponent, tmpDir)
+}
+
+func (dv *DellVendor) downloadFirmware(fw DellSoftwareComponent, tmpDir string) (string, error) {
+	file, err := utils.DownloadFile(dv.BaseURL + "/" + fw.Path)
 	if err != nil {
 		return "", err
 	}
@@ -117,28 +125,44 @@ func DellDownloadFirmware(fw DellSoftwareComponent, tmpDir string) (string, erro
 	return filepath, nil
 }
 
-func HandleDellFirmware(fw DellSoftwareComponent) (*types.Component, error) {
-	out := types.Component{}
+func (dc *DellCatalog) ListEntries() []types.FirmwareEntry {
+	entries := []types.FirmwareEntry{}
+	for _, fw := range dc.SoftwareComponents {
+		entries = append(entries, &DellFirmwareEntry{
+			Filename:              path.Base(fw.Path),
+			DellSoftwareComponent: &fw,
+		})
+	}
+	return entries
+}
 
-	out.Type = "firmware"
+func (dfe *DellFirmwareEntry) GetFilename() string {
+	return dfe.Filename
+}
 
-	out.Name, _ = dellGetString(fw.Name, "en")
+func (dfe *DellFirmwareEntry) ToAppstream() (*types.Component, error) {
+	return processFirmware(*dfe.DellSoftwareComponent)
+}
+
+func processFirmware(fw DellSoftwareComponent) (*types.Component, error) {
+	out := types.Component{
+		Type:            "firmware",
+		MetadataLicense: "proprietary",
+		ProjectLicense:  "proprietary",
+	}
+
+	out.Name, _ = getString(fw.Name, "en")
 	out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower("Dell"), uuid.NewSHA1(uuid.NameSpaceDNS, []byte(out.Name)).String())
 
-	var guids []string
 	for _, brand := range fw.SupportedSystems {
 		for _, system := range brand.Models {
 			for _, dev := range fw.SupportedDevices {
-				guids = append(guids, uuid.NewSHA1(uuid.NameSpaceDNS, fmt.Appendf(nil, "REDFISH\\VENDOR_Dell&SYSTEMID_%s&SOFTWAREID_%s", system.SystemID, dev.ComponentID)).String())
+				out.Provides = append(out.Provides, types.Firmware{
+					Type: "flashed",
+					Text: uuid.NewSHA1(uuid.NameSpaceDNS, fmt.Appendf(nil, "REDFISH\\VENDOR_Dell&SYSTEMID_%s&SOFTWAREID_%s", system.SystemID, dev.ComponentID)).String(),
+				})
 			}
 		}
-	}
-
-	for _, guid := range guids {
-		out.Provides = append(out.Provides, types.Firmware{
-			Type: "flashed",
-			Text: guid,
-		})
 	}
 
 	if fw.RebootRequired {
@@ -146,7 +170,7 @@ func HandleDellFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 			Key:   "LVFS::DeviceFlags",
 			Value: "skips-restart",
 		})
-		rebootMessage, err := dellGetString(fw.ImportantInfo, "en")
+		rebootMessage, err := getString(fw.ImportantInfo, "en")
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +181,7 @@ func HandleDellFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 		})
 	}
 
-	summary, err := dellGetString(fw.Description, "en")
+	summary, err := getString(fw.Description, "en")
 	if err != nil {
 		return nil, err
 	}
@@ -166,16 +190,11 @@ func HandleDellFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 		Value: "<p>" + summary + "</p>",
 	}
 
-	out.MetadataLicense = "proprietary"
-	out.ProjectLicense = "proprietary"
-
 	out.Releases = append(out.Releases, types.Release{
-		Version: fw.VendorVersion,
-		Date:    fw.DateTime.String(),
-		Description: types.Description{
-			Value: "<p>" + summary + "</p>",
-		},
-		Urgency: dellGetUrgency(fw.Criticality.Value),
+		Version:     fw.VendorVersion,
+		Date:        fw.DateTime.String(),
+		Description: out.Description,
+		Urgency:     getUrgency(fw.Criticality.Value),
 		Checksum: types.Checksum{
 			Filename: path.Base(fw.Path),
 			Target:   "content",
@@ -195,8 +214,6 @@ func HandleDellFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 		out.Categories = append(out.Categories, "X-Controller")
 	case "iDRAC with Lifecycle Controller":
 		out.Categories = append(out.Categories, "X-BaseboardManagementController")
-	default:
-		return nil, fmt.Errorf("no category matching for %s", fw.LUCategory.Value)
 	}
 
 	out.Custom = append(out.Custom, types.Custom{
@@ -209,4 +226,26 @@ func HandleDellFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 	})
 
 	return &out, nil
+}
+
+func getString(strings DellTranslatable, language string) (string, error) {
+	for _, l := range strings.Display {
+		if l.Lang == language {
+			return l.Value, nil
+		}
+	}
+	return "", fmt.Errorf("language not found: %s", language)
+}
+
+func getUrgency(criticality int64) string {
+	switch criticality {
+	case 1:
+		return "medium"
+	case 2:
+		return "critical"
+	case 3:
+		return "low"
+	default:
+		return "medium"
+	}
 }
