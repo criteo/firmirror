@@ -1,0 +1,38 @@
+{
+  "test-firmware-v1.0.0.fwpkg": {
+    "date": "20240115",
+    "description": "Test firmware for network adapter",
+    "deviceclass": "79f0c163-0c13-4662-9dea-09235fef90cb",
+    "minimum_active_version": "null",
+    "reboot_required": "yes",
+    "server_power_off": "False",
+    "target": [
+       "a6b1a447-382a-5a4f-15b3-101715900346"
+    ],
+    "version": "16.29.1016"
+  },
+  "test-ilo-firmware-v2.1.0.fwpkg": {
+    "date": "20240120",
+    "description": "Test iLO firmware update",
+    "deviceclass": "2f317b9d-c9e3-4d76-bff6-b9d0d085a952",
+    "minimum_active_version": "null",
+    "reboot_required": "no",
+    "server_power_off": "False",
+    "target": [
+       "4764a662-b342-4fc7-9ce9-258c5d99e815"
+    ],
+    "version": "1.48"
+  },
+  "other-file.zip": {
+    "date": "20240110",
+    "description": "Other file type that should be filtered out",
+    "deviceclass": "null",
+    "minimum_active_version": "null",
+    "reboot_required": "yes",
+    "server_power_off": "False",
+    "target": [
+       "null"
+    ],
+    "version": "15.10.10.00"
+  }
+}
