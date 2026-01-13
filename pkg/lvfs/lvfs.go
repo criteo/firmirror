@@ -1,4 +1,4 @@
-package types
+package lvfs
 
 import "encoding/xml"
 

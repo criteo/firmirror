@@ -1,4 +1,6 @@
-package types
+package firmirror
+
+import "github.com/criteo/firmirror/pkg/lvfs"
 
 type Vendor interface {
 	// FetchCatalog retrieves the catalog of firmware for the vendor.
@@ -20,5 +22,5 @@ type FirmwareEntry interface {
 	// and if it should be processed
 	GetFilename() string
 	// ToAppstream converts this firmware entry to an AppStream component.
-	ToAppstream() (*Component, error)
+	ToAppstream() (*lvfs.Component, error)
 }

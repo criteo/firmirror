@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/criteo/firmirror/types"
+	"github.com/criteo/firmirror/pkg/lvfs"
 )
 
 type FirmirrorConfig struct {
@@ -17,29 +17,29 @@ type FirmirrorConfig struct {
 
 type FimirrorSyncer struct {
 	Config  FirmirrorConfig
-	vendors map[string]types.Vendor
+	vendors map[string]Vendor
 }
 
 func NewFimirrorSyncer(config FirmirrorConfig) *FimirrorSyncer {
 	return &FimirrorSyncer{
 		Config:  config,
-		vendors: make(map[string]types.Vendor),
+		vendors: make(map[string]Vendor),
 	}
 }
 
 // RegisterVendor registers a vendor with the given name
-func (f *FimirrorSyncer) RegisterVendor(name string, vendor types.Vendor) {
+func (f *FimirrorSyncer) RegisterVendor(name string, vendor Vendor) {
 	f.vendors[name] = vendor
 }
 
 // GetAllVendors returns all registered vendors
-func (f *FimirrorSyncer) GetAllVendors() map[string]types.Vendor {
+func (f *FimirrorSyncer) GetAllVendors() map[string]Vendor {
 	// Return a copy to prevent external modifications
 	return maps.Clone(f.vendors)
 }
 
 // processVendor processes firmware for a given vendor using the interface
-func (f *FimirrorSyncer) ProcessVendor(vendor types.Vendor, vendorName string) error {
+func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 	logger := slog.With("vendor", vendorName)
 	logger.Info("Fetching catalog")
 
@@ -92,7 +92,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor types.Vendor, vendorName string) e
 	return nil
 }
 
-func (f *FimirrorSyncer) buildPackage(appstream *types.Component, tmpDir string) error {
+func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, tmpDir string) error {
 	outBytes := []byte(xml.Header)
 	xmlBytes, err := xml.MarshalIndent(appstream, "", "  ")
 	if err != nil {

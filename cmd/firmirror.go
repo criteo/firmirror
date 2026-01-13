@@ -6,9 +6,9 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/criteo/firmirror/firmirror"
-	"github.com/criteo/firmirror/vendors/dell"
-	"github.com/criteo/firmirror/vendors/hpe"
+	"github.com/criteo/firmirror/pkg/firmirror"
+	"github.com/criteo/firmirror/pkg/vendors/dell"
+	"github.com/criteo/firmirror/pkg/vendors/hpe"
 )
 
 func main() {
