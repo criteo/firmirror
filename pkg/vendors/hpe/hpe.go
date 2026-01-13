@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/criteo/firmirror/types"
-	"github.com/criteo/firmirror/utils"
+	"github.com/criteo/firmirror/pkg/firmirror"
+	"github.com/criteo/firmirror/pkg/lvfs"
+	"github.com/criteo/firmirror/pkg/utils"
 )
 
 // NewHPEVendor creates a new HPE vendor instance
@@ -22,7 +23,7 @@ func NewHPEVendor(repo string) *HPEVendor {
 }
 
 // FetchCatalog implements the Vendor interface
-func (hv *HPEVendor) FetchCatalog() (types.Catalog, error) {
+func (hv *HPEVendor) FetchCatalog() (firmirror.Catalog, error) {
 	catalog, err := hv.fetchCatalog()
 	if err != nil {
 		return nil, err
@@ -69,7 +70,7 @@ func (hv *HPEVendor) filterCatalog(catalog *HPECatalog) *HPECatalog {
 }
 
 // RetrieveFirmware implements the Vendor interface
-func (hv *HPEVendor) RetrieveFirmware(entry types.FirmwareEntry, tmpDir string) (string, error) {
+func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) (string, error) {
 	hpeEntry, ok := entry.(*HPEFirmwareEntry)
 	if !ok {
 		return "", fmt.Errorf("invalid entry type for HPE vendor")
@@ -102,8 +103,8 @@ func (hv *HPEVendor) fetchFirmware(filename, tmpDir string) (string, error) {
 }
 
 // ListEntries implements the Catalog interface for HPECatalog
-func (hc *HPECatalog) ListEntries() []types.FirmwareEntry {
-	entries := []types.FirmwareEntry{}
+func (hc *HPECatalog) ListEntries() []firmirror.FirmwareEntry {
+	entries := []firmirror.FirmwareEntry{}
 	for filename, catalogEntry := range hc.Entries {
 		entry := catalogEntry // Create a copy to avoid pointer issues
 		entries = append(entries, &HPEFirmwareEntry{
@@ -121,7 +122,7 @@ func (hfe *HPEFirmwareEntry) GetFilename() string {
 
 // ToAppstream implements the FirmwareEntry interface
 // HPE requires the firmware to be downloaded first, so we use the stored path
-func (hfe *HPEFirmwareEntry) ToAppstream() (*types.Component, error) {
+func (hfe *HPEFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
 	if hfe.downloadPath == "" {
 		return nil, fmt.Errorf("firmware must be retrieved first using RetrieveFirmware")
 	}
@@ -141,7 +142,7 @@ func (hfe *HPEFirmwareEntry) ToAppstream() (*types.Component, error) {
 		return nil, err
 	}
 
-	appstream.Releases[0].Checksum = types.Checksum{
+	appstream.Releases[0].Checksum = lvfs.Checksum{
 		Filename: hfe.Filename,
 		Target:   "content",
 	}
@@ -152,8 +153,8 @@ func (hfe *HPEFirmwareEntry) ToAppstream() (*types.Component, error) {
 // buildAppStream converts an HPE firmware payload to an AppStream component.
 // Note: we make the assumption that all devices in the payload will have the same version
 // as well as the install duration.
-func buildAppStream(fw HPEPayload) (*types.Component, error) {
-	out := types.Component{
+func buildAppStream(fw HPEPayload) (*lvfs.Component, error) {
+	out := lvfs.Component{
 		Type:            "firmware",
 		MetadataLicense: "proprietary",
 		ProjectLicense:  "proprietary",
@@ -164,7 +165,7 @@ func buildAppStream(fw HPEPayload) (*types.Component, error) {
 		devices = append(devices, dev.DeviceName)
 		// TODO:properly create GUID
 		// deviceclass ?
-		out.Provides = append(out.Provides, types.Firmware{
+		out.Provides = append(out.Provides, lvfs.Firmware{
 			Type: "flashed",
 			Text: dev.Target,
 		})
@@ -181,7 +182,7 @@ func buildAppStream(fw HPEPayload) (*types.Component, error) {
 	out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower(strings.ReplaceAll(manufacturer, " ", "")), strings.ReplaceAll(fw.Package.SwKeys[0].Name, " ", ""))
 
 	if fw.Package.Installation.RebootRequired == "yes" {
-		out.Custom = append(out.Custom, types.Custom{
+		out.Custom = append(out.Custom, lvfs.Custom{
 			Key:   "LVFS::DeviceFlags",
 			Value: "skips-restart",
 		})
@@ -190,7 +191,7 @@ func buildAppStream(fw HPEPayload) (*types.Component, error) {
 			return nil, err
 		}
 
-		out.Custom = append(out.Custom, types.Custom{
+		out.Custom = append(out.Custom, lvfs.Custom{
 			Key:   "LVFS::UpdateMessage",
 			Value: rebootMessage,
 		})
@@ -206,7 +207,7 @@ func buildAppStream(fw HPEPayload) (*types.Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	out.Description = types.Description{
+	out.Description = lvfs.Description{
 		Value: "<p>" + description + "</p>",
 	}
 
@@ -215,7 +216,7 @@ func buildAppStream(fw HPEPayload) (*types.Component, error) {
 		return nil, err
 	}
 
-	out.Releases = append(out.Releases, types.Release{
+	out.Releases = append(out.Releases, lvfs.Release{
 		Version:         fw.Devices.Device[0].Version,
 		Date:            releaseDate.Format(time.DateOnly),
 		InstallDuration: fw.Devices.Device[0].FirmwareImages[0].InstallDurationSec,
@@ -233,10 +234,10 @@ func buildAppStream(fw HPEPayload) (*types.Component, error) {
 		}
 	}
 
-	out.Custom = append(out.Custom, types.Custom{
+	out.Custom = append(out.Custom, lvfs.Custom{
 		Key:   "LVFS::UpdateProtocol",
 		Value: "org.dmtf.redfish",
-	}, types.Custom{
+	}, lvfs.Custom{
 		Key: "LVFS::DeviceIntegrity",
 		// All fwpkg going through Redfish are signed
 		Value: "signed",

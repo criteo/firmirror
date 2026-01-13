@@ -9,8 +9,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/criteo/firmirror/types"
-	"github.com/criteo/firmirror/utils"
+	"github.com/criteo/firmirror/pkg/firmirror"
+	"github.com/criteo/firmirror/pkg/lvfs"
+	"github.com/criteo/firmirror/pkg/utils"
 	"github.com/google/uuid"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
@@ -25,7 +26,7 @@ func NewDellVendor(systemIDs []string) *DellVendor {
 	return vendor
 }
 
-func (dv *DellVendor) FetchCatalog() (types.Catalog, error) {
+func (dv *DellVendor) FetchCatalog() (firmirror.Catalog, error) {
 	catalog, err := dv.fetchCatalog()
 	if err != nil {
 		return nil, err
@@ -101,7 +102,7 @@ func (dv *DellVendor) filterCatalog(catalog *DellCatalog) *DellCatalog {
 	return &filteredCatalog
 }
 
-func (dv *DellVendor) RetrieveFirmware(entry types.FirmwareEntry, tmpDir string) (string, error) {
+func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) (string, error) {
 	dellEntry, ok := entry.(*DellFirmwareEntry)
 	if !ok {
 		return "", fmt.Errorf("invalid entry type for Dell vendor")
@@ -125,8 +126,8 @@ func (dv *DellVendor) downloadFirmware(fw DellSoftwareComponent, tmpDir string) 
 	return filepath, nil
 }
 
-func (dc *DellCatalog) ListEntries() []types.FirmwareEntry {
-	entries := []types.FirmwareEntry{}
+func (dc *DellCatalog) ListEntries() []firmirror.FirmwareEntry {
+	entries := []firmirror.FirmwareEntry{}
 	for _, fw := range dc.SoftwareComponents {
 		entries = append(entries, &DellFirmwareEntry{
 			Filename:              path.Base(fw.Path),
@@ -140,12 +141,12 @@ func (dfe *DellFirmwareEntry) GetFilename() string {
 	return dfe.Filename
 }
 
-func (dfe *DellFirmwareEntry) ToAppstream() (*types.Component, error) {
+func (dfe *DellFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
 	return processFirmware(*dfe.DellSoftwareComponent)
 }
 
-func processFirmware(fw DellSoftwareComponent) (*types.Component, error) {
-	out := types.Component{
+func processFirmware(fw DellSoftwareComponent) (*lvfs.Component, error) {
+	out := lvfs.Component{
 		Type:            "firmware",
 		MetadataLicense: "proprietary",
 		ProjectLicense:  "proprietary",
@@ -157,7 +158,7 @@ func processFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 	for _, brand := range fw.SupportedSystems {
 		for _, system := range brand.Models {
 			for _, dev := range fw.SupportedDevices {
-				out.Provides = append(out.Provides, types.Firmware{
+				out.Provides = append(out.Provides, lvfs.Firmware{
 					Type: "flashed",
 					Text: uuid.NewSHA1(uuid.NameSpaceDNS, fmt.Appendf(nil, "REDFISH\\VENDOR_Dell&SYSTEMID_%s&SOFTWAREID_%s", system.SystemID, dev.ComponentID)).String(),
 				})
@@ -166,7 +167,7 @@ func processFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 	}
 
 	if fw.RebootRequired {
-		out.Custom = append(out.Custom, types.Custom{
+		out.Custom = append(out.Custom, lvfs.Custom{
 			Key:   "LVFS::DeviceFlags",
 			Value: "skips-restart",
 		})
@@ -175,7 +176,7 @@ func processFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 			return nil, err
 		}
 
-		out.Custom = append(out.Custom, types.Custom{
+		out.Custom = append(out.Custom, lvfs.Custom{
 			Key:   "LVFS::UpdateMessage",
 			Value: rebootMessage,
 		})
@@ -186,16 +187,16 @@ func processFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 		return nil, err
 	}
 	out.Summary = summary
-	out.Description = types.Description{
+	out.Description = lvfs.Description{
 		Value: "<p>" + summary + "</p>",
 	}
 
-	out.Releases = append(out.Releases, types.Release{
+	out.Releases = append(out.Releases, lvfs.Release{
 		Version:     fw.VendorVersion,
 		Date:        fw.DateTime.String(),
 		Description: out.Description,
 		Urgency:     getUrgency(fw.Criticality.Value),
-		Checksum: types.Checksum{
+		Checksum: lvfs.Checksum{
 			Filename: path.Base(fw.Path),
 			Target:   "content",
 		},
@@ -216,10 +217,10 @@ func processFirmware(fw DellSoftwareComponent) (*types.Component, error) {
 		out.Categories = append(out.Categories, "X-BaseboardManagementController")
 	}
 
-	out.Custom = append(out.Custom, types.Custom{
+	out.Custom = append(out.Custom, lvfs.Custom{
 		Key:   "LVFS::UpdateProtocol",
 		Value: "org.dmtf.redfish",
-	}, types.Custom{
+	}, lvfs.Custom{
 		Key: "LVFS::DeviceIntegrity",
 		// All Dell firmware going through Redfish are signed
 		Value: "signed",
