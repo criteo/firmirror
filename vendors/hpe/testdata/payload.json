@@ -1,0 +1,129 @@
+{
+    "DeviceClass": "79f0c163-0c13-4662-9dea-09235fef90cb",
+    "Devices": {
+        "Device": [
+            {
+                "DeviceName": "Network Device",
+                "FirmwareImages": [
+                    {
+                        "FileName": "22_41_1000-MCX623106AS-CDA_Ax.pldm.signed",
+                        "InstallDurationSec": 300,
+                        "Order": 1,
+                        "PLDMImage": true,
+                        "ResetRequired": true,
+                        "SysPowerON": true,
+                        "Type": "Firmware",
+                        "UefiFlashable": true
+                    }
+                ],
+                "Target": "a6b1a447-382a-5a4f-15b3-101d15b30042",
+                "Version": "22.41.1000"
+            }
+        ]
+    },
+    "PackageFormat": "FWPKG-v2",
+    "Type": "Firmware",
+    "UpdatableBy": [
+        "Bmc"
+    ],
+    "package": {
+        "category": [
+            {
+                "key": "2900095",
+                "languages": [
+                    {
+                        "lang": "fr",
+                        "x_late": "Micrologiciel - Réseau"
+                    },
+                    {
+                        "lang": "en",
+                        "x_late": "Firmware - Network"
+                    }
+                ]
+            }
+        ],
+        "description": [
+            {
+                "lang": "en",
+                "x_late": "Test firmware for network adapter"
+            }
+        ],
+        "id": {
+            "product": "23c569ea92fb47f091a7a0c891acff72",
+            "version": "44a7a2b1e90348cf94878c37e9710bc4"
+        },
+        "installation": {
+            "command": "",
+            "command_params": "",
+            "install_caps": {
+                "needuseracct": "no",
+                "silent": "no"
+            },
+            "per_device_install_time_seconds": 360,
+            "reboot_details": [
+                {
+                    "language": [
+                        {
+                            "lang": "tw",
+                            "x_late": "安裝後必須重新啟動，更新才會生效，並維持硬體穩定。"
+                        },
+                        {
+                            "lang": "en",
+                            "x_late": "Reboot is required after installation for updates to take effect and hardware stability to be maintained."
+                        },
+                        {
+                            "lang": "ko",
+                            "x_late": "업데이트가 적용되고 하드웨어 안정성이 유지되려면 설치 후 재부팅해야 합니다."
+                        },
+                        {
+                            "lang": "ja",
+                            "x_late": "アップデートの効果とハードウェアの安定を得るために、インストール後の再起動は必要です。"
+                        },
+                        {
+                            "lang": "cn",
+                            "x_late": "安装之后必须重启才能使更新生效并保持硬件稳定性。"
+                        }
+                    ]
+                }
+            ],
+            "reboot_required": "yes"
+        },
+        "installation_dependency": {
+            "DependencyRequirement": {
+                "ApplicableTo": {
+                    "GuidTargets": {
+                        "GuidTarget": []
+                    }
+                },
+                "DateCreated": "2024-05-27T13:11:14.4145598+00:00",
+                "Requires": {
+                    "Requirements": []
+                }
+            }
+        },
+        "manufacturer_name": [
+            {
+                "lang": "en",
+                "x_late": "Hewlett Packard Enterprise"
+            },
+            {
+                "lang": "cn",
+                "x_late": "惠普企业"
+            }
+        ],
+        "name": [
+            {
+                "lang": "en",
+                "x_late": "Test Network Firmware"
+            }
+        ],
+        "release_date": "2024-06-21T06:08:27",
+        "schema_version": "1.0.0.0",
+        "sw_keys": [
+            {
+                "name": "TestFirmware",
+                "sw_key_expectedpath": "firmware:nic"
+            }
+        ]
+    }
+}

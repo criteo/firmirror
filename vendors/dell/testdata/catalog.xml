@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<Manifest version="1.0" dateTime="2024-01-15T10:30:00Z" baseLocation="https://dl.dell.com">
+  <SoftwareComponent dateTime="2024-01-15T10:30:00Z" dellVersion="1.0.0" hashMD5="abc123def456" packageID="test-firmware-1" packageType="BIN" path="FOLDER01/firmware1.exe" rebootRequired="true" releaseDate="2024-01-15" releaseID="R001" schemaVersion="2.0" size="1024000" vendorVersion="1.0.0">
+    <Name>
+      <Display lang="en">Test Network Firmware</Display>
+    </Name>
+    <ComponentType value="FRMW">
+      <Display lang="en">Firmware</Display>
+    </ComponentType>
+    <Description>
+      <Display lang="en">Test firmware for network adapter</Display>
+    </Description>
+    <LUCategory value="Network">
+      <Display lang="en">Network</Display>
+    </LUCategory>
+    <Category value="NW">
+      <Display lang="en">Network</Display>
+    </Category>
+    <ImportantInfo>
+      <Display lang="en">Reboot required after installation</Display>
+    </ImportantInfo>
+    <SupportedDevices>
+      <Device componentID="DEV001" embedded="false">
+        <Display lang="en">Network Device 1</Display>
+      </Device>
+    </SupportedDevices>
+    <RevisionHistory>
+      <Display lang="en">Initial release</Display>
+    </RevisionHistory>
+    <SupportedSystems>
+      <Brand key="1" prefix="Dell Inc.">
+        <Display lang="en">Dell</Display>
+        <Model systemID="0C60" systemIDType="ServiceTag">
+          <Display lang="en">PowerEdge R750</Display>
+        </Model>
+        <Model systemID="0C61" systemIDType="ServiceTag">
+          <Display lang="en">PowerEdge R760</Display>
+        </Model>
+      </Brand>
+    </SupportedSystems>
+    <Criticality value="1">
+      <Display lang="en">Recommended</Display>
+    </Criticality>
+  </SoftwareComponent>
+  <SoftwareComponent dateTime="2024-01-20T14:45:00Z" dellVersion="2.1.0" hashMD5="def456ghi789" packageID="test-bios-1" packageType="BIN" path="FOLDER02/bios.exe" rebootRequired="true" releaseDate="2024-01-20" releaseID="R002" schemaVersion="2.0" size="2048000" vendorVersion="2.1.0">
+    <Name>
+      <Display lang="en">Test BIOS Update</Display>
+    </Name>
+    <ComponentType value="FRMW">
+      <Display lang="en">Firmware</Display>
+    </ComponentType>
+    <Description>
+      <Display lang="en">BIOS firmware update</Display>
+    </Description>
+    <LUCategory value="BIOS">
+      <Display lang="en">BIOS</Display>
+    </LUCategory>
+    <Category value="BI">
+      <Display lang="en">BIOS</Display>
+    </Category>
+    <ImportantInfo>
+      <Display lang="en">Critical BIOS update</Display>
+    </ImportantInfo>
+    <SupportedDevices>
+      <Device componentID="BIOS001" embedded="true">
+        <Display lang="en">System BIOS</Display>
+      </Device>
+    </SupportedDevices>
+    <RevisionHistory>
+      <Display lang="en">Security fixes and performance improvements</Display>
+    </RevisionHistory>
+    <SupportedSystems>
+      <Brand key="1" prefix="Dell Inc.">
+        <Display lang="en">Dell</Display>
+        <Model systemID="0C60" systemIDType="ServiceTag">
+          <Display lang="en">PowerEdge R750</Display>
+        </Model>
+      </Brand>
+    </SupportedSystems>
+    <Criticality value="2">
+      <Display lang="en">Critical</Display>
+    </Criticality>
+  </SoftwareComponent>
+  <SoftwareComponent dateTime="2024-01-10T12:00:00Z" dellVersion="3.0.0" hashMD5="ghi789jkl012" packageID="test-driver-1" packageType="BIN" path="FOLDER03/driver.exe" rebootRequired="false" releaseDate="2024-01-10" releaseID="R003" schemaVersion="2.0" size="512000" vendorVersion="3.0.0">
+    <Name>
+      <Display lang="en">Test Network Driver</Display>
+    </Name>
+    <ComponentType value="DRVR">
+      <Display lang="en">Driver</Display>
+    </ComponentType>
+    <Description>
+      <Display lang="en">Network driver update</Display>
+    </Description>
+    <LUCategory value="Network">
+      <Display lang="en">Network</Display>
+    </LUCategory>
+    <Category value="NW">
+      <Display lang="en">Network</Display>
+    </Category>
+    <ImportantInfo>
+      <Display lang="en">Driver update</Display>
+    </ImportantInfo>
+    <SupportedDevices>
+      <Device componentID="DEV002" embedded="false">
+        <Display lang="en">Network Device 2</Display>
+      </Device>
+    </SupportedDevices>
+    <RevisionHistory>
+      <Display lang="en">Driver improvements</Display>
+    </RevisionHistory>
+    <SupportedSystems>
+      <Brand key="1" prefix="Dell Inc.">
+        <Display lang="en">Dell</Display>
+        <Model systemID="0C70" systemIDType="ServiceTag">
+          <Display lang="en">PowerEdge R640</Display>
+        </Model>
+      </Brand>
+    </SupportedSystems>
+    <Criticality value="3">
+      <Display lang="en">Optional</Display>
+    </Criticality>
+  </SoftwareComponent>
+</Manifest>
