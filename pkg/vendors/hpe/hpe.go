@@ -76,29 +76,13 @@ func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir stri
 		return "", fmt.Errorf("invalid entry type for HPE vendor")
 	}
 
-	filepath, err := hv.fetchFirmware(hpeEntry.Filename, tmpDir)
-	if err != nil {
+	filepath := path.Join(tmpDir, path.Base(hpeEntry.Filename))
+	if err := utils.DownloadFileToDest(hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
 		return "", err
 	}
 
 	// Store the download path in the entry for later processing
 	hpeEntry.downloadPath = filepath
-	return filepath, nil
-}
-
-func (hv *HPEVendor) fetchFirmware(filename, tmpDir string) (string, error) {
-	file, err := utils.DownloadFile(hv.BaseURL + "/current/" + filename)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	filepath := path.Join(tmpDir, path.Base(filename))
-	err = utils.ReaderToFile(file, filepath)
-	if err != nil {
-		return "", err
-	}
-
 	return filepath, nil
 }
 

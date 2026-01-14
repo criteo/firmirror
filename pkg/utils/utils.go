@@ -7,38 +7,6 @@ import (
 	"os"
 )
 
-func ReaderToFile(src io.Reader, dst string) error {
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	buffer := make([]byte, 4096)
-
-	_, err = io.CopyBuffer(out, src, buffer)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func CopyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	err = ReaderToFile(in, dst)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func DownloadFile(url string) (io.ReadCloser, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -51,4 +19,21 @@ func DownloadFile(url string) (io.ReadCloser, error) {
 	}
 
 	return resp.Body, nil
+}
+
+func DownloadFileToDest(url, file string) error {
+	out, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	resp, err := DownloadFile(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Close()
+
+	_, err = io.Copy(out, resp)
+	return err
 }

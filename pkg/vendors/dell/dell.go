@@ -107,19 +107,10 @@ func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir str
 	if !ok {
 		return "", fmt.Errorf("invalid entry type for Dell vendor")
 	}
-	return dv.downloadFirmware(*dellEntry.DellSoftwareComponent, tmpDir)
-}
 
-func (dv *DellVendor) downloadFirmware(fw DellSoftwareComponent, tmpDir string) (string, error) {
-	file, err := utils.DownloadFile(dv.BaseURL + "/" + fw.Path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	filepath := path.Join(tmpDir, path.Base(fw.Path))
-	err = utils.ReaderToFile(file, filepath)
-	if err != nil {
+	fwPath := dellEntry.DellSoftwareComponent.Path
+	filepath := path.Join(tmpDir, path.Base(fwPath))
+	if err := utils.DownloadFileToDest(dv.BaseURL+"/"+fwPath, filepath); err != nil {
 		return "", err
 	}
 
