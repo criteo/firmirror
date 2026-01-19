@@ -21,6 +21,8 @@ type FirmwareEntry interface {
 	// GetFilename will be used to determine if the firmware has already been downloaded
 	// and if it should be processed
 	GetFilename() string
+	// GetSourceURL returns the original download URL for this firmware
+	GetSourceURL() string
 	// ToAppstream converts this firmware entry to an AppStream component.
 	ToAppstream() (*lvfs.Component, error)
 }

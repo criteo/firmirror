@@ -61,12 +61,17 @@ func (m *MockCatalog) ListEntries() []FirmwareEntry {
 // MockFirmwareEntry implements the FirmwareEntry interface for testing
 type MockFirmwareEntry struct {
 	filename     string
+	sourceURL    string
 	appstream    *lvfs.Component
 	appstreamErr error
 }
 
 func (m *MockFirmwareEntry) GetFilename() string {
 	return m.filename
+}
+
+func (m *MockFirmwareEntry) GetSourceURL() string {
+	return m.sourceURL
 }
 
 func (m *MockFirmwareEntry) ToAppstream() (*lvfs.Component, error) {

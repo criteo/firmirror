@@ -26,6 +26,7 @@ type DellCatalog struct {
 type DellFirmwareEntry struct {
 	Filename              string
 	DellSoftwareComponent *DellSoftwareComponent
+	SourceURL             string
 }
 
 // DellSoftwareComponent represents a software component like firmware or driver

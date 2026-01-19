@@ -77,6 +77,15 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 			continue
 		}
 
+		// Add source URL
+		sourceURL := entry.GetSourceURL()
+		if sourceURL != "" {
+			appstream.URL = lvfs.URL{
+				Type: "homepage",
+				Text: sourceURL,
+			}
+		}
+
 		// Build package
 		err = f.buildPackage(appstream, tmpDir)
 		if err != nil {

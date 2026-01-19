@@ -123,6 +123,7 @@ func (dc *DellCatalog) ListEntries() []firmirror.FirmwareEntry {
 		entries = append(entries, &DellFirmwareEntry{
 			Filename:              path.Base(fw.Path),
 			DellSoftwareComponent: &fw,
+			SourceURL:             dc.BaseLocation + "/" + fw.Path,
 		})
 	}
 	return entries
@@ -130,6 +131,10 @@ func (dc *DellCatalog) ListEntries() []firmirror.FirmwareEntry {
 
 func (dfe *DellFirmwareEntry) GetFilename() string {
 	return dfe.Filename
+}
+
+func (dfe *DellFirmwareEntry) GetSourceURL() string {
+	return dfe.SourceURL
 }
 
 func (dfe *DellFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
