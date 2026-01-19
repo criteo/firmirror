@@ -180,8 +180,6 @@ func TestHPEFirmwareEntry_ToAppstream_Success(t *testing.T) {
 	assert.Equal(t, "22.41.1000", release.Version, "Release version should match")
 	assert.Equal(t, "2024-06-21", release.Date, "Release date should match")
 	assert.Equal(t, 300, release.InstallDuration, "Install duration should match")
-	assert.Equal(t, "test-firmware.fwpkg", release.Checksum.Filename, "Checksum filename should match")
-	assert.Equal(t, "content", release.Checksum.Target, "Checksum target should be content")
 
 	// Verify categories
 	assert.Contains(t, component.Categories, "X-NetworkInterface", "Should contain X-NetworkInterface category")

@@ -1,7 +1,11 @@
 package firmirror
 
 import (
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/xml"
+	"io"
 	"log/slog"
 	"maps"
 	"os"
@@ -101,6 +105,30 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 
 func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir string) error {
 	fwPath := path.Join(tmpDir, fwFile)
+
+	// Add checksums to all releases
+	sha1Hash, sha256Hash, err := calculateChecksums(fwPath)
+	if err != nil {
+		return err
+	}
+
+	for i := range appstream.Releases {
+		appstream.Releases[i].Checksums = []lvfs.Checksum{
+			{
+				Filename: fwFile,
+				Target:   "content",
+				Type:     "sha1",
+				Value:    sha1Hash,
+			},
+			{
+				Filename: fwFile,
+				Target:   "content",
+				Type:     "sha256",
+				Value:    sha256Hash,
+			},
+		}
+	}
+
 	fwMeta := path.Join(tmpDir, "firmware.metainfo.xml")
 	outBytes := []byte(xml.Header)
 	xmlBytes, err := xml.MarshalIndent(appstream, "", "  ")
@@ -122,4 +150,25 @@ func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir 
 	}
 
 	return nil
+}
+
+func calculateChecksums(filepath string) (sha1Hash, sha256Hash string, err error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return "", "", err
+	}
+	defer file.Close()
+
+	sha1Hasher := sha1.New()
+	sha256Hasher := sha256.New()
+
+	// Use MultiWriter to compute both hashes in one pass
+	if _, err := io.Copy(io.MultiWriter(sha1Hasher, sha256Hasher), file); err != nil {
+		return "", "", err
+	}
+
+	sha1Hash = hex.EncodeToString(sha1Hasher.Sum(nil))
+	sha256Hash = hex.EncodeToString(sha256Hasher.Sum(nil))
+
+	return sha1Hash, sha256Hash, nil
 }

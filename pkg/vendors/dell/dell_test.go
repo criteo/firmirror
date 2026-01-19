@@ -301,7 +301,6 @@ func TestDellFirmwareEntry_ToAppstream(t *testing.T) {
 	release := component.Releases[0]
 	assert.Equal(t, "1.0.0", release.Version, "Release version should match")
 	assert.Equal(t, "medium", release.Urgency, "Release urgency should be medium for criticality 1")
-	assert.Equal(t, "test-firmware.exe", release.Checksum.Filename, "Checksum filename should match")
 
 	// Verify categories for Network LUCategory
 	assert.Contains(t, component.Categories, "X-NetworkInterface", "Should contain X-NetworkInterface category")
@@ -328,4 +327,3 @@ func mustParseTime(timeStr string) time.Time {
 	}
 	return t
 }
-

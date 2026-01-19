@@ -137,11 +137,6 @@ func (hfe *HPEFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
 		return nil, err
 	}
 
-	appstream.Releases[0].Checksum = lvfs.Checksum{
-		Filename: hfe.Filename,
-		Target:   "content",
-	}
-
 	return appstream, nil
 }
 

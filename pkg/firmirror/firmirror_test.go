@@ -152,10 +152,6 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 				Releases: []lvfs.Release{
 					{
 						Version: "1.0.0",
-						Checksum: lvfs.Checksum{
-							Filename: "test-firmware.bin",
-							Target:   "content",
-						},
 					},
 				},
 			},

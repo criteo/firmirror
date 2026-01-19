@@ -43,7 +43,7 @@ type Release struct {
 	Version         string      `xml:"version,attr"`
 	Date            string      `xml:"date,attr"`
 	InstallDuration int         `xml:"install_duration,attr"`
-	Checksum        Checksum    `xml:"checksum"`
+	Checksums       []Checksum  `xml:"checksum"`
 	Description     Description `xml:"description"`
 	Issues          []Issue     `xml:"issues>issue,omitempty"`
 }
@@ -51,6 +51,8 @@ type Release struct {
 type Checksum struct {
 	Filename string `xml:"filename,attr"`
 	Target   string `xml:"target,attr"`
+	Type     string `xml:"type,attr,omitempty"`
+	Value    string `xml:",chardata"`
 }
 
 type Issue struct {
