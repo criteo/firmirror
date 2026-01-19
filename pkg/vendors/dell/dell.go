@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"slices"
 	"strings"
@@ -111,8 +112,10 @@ func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir str
 
 	fwPath := dellEntry.DellSoftwareComponent.Path
 	filepath := path.Join(tmpDir, path.Base(fwPath))
-	if err := utils.DownloadFileToDest(dv.BaseURL+"/"+fwPath, filepath); err != nil {
-		return "", err
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		if err := utils.DownloadFileToDest(dv.BaseURL+"/"+fwPath, filepath); err != nil {
+			return "", err
+		}
 	}
 
 	return filepath, nil

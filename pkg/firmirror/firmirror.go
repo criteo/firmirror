@@ -57,12 +57,11 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 		entryLogger := logger.With("firmware", fwName)
 		entryLogger.Info("Processing firmware")
 
-		tmpDir, err := os.MkdirTemp(f.Config.OutputDir, fwName+".wrk")
-		if err != nil {
+		tmpDir := path.Join(f.Config.OutputDir, fwName+".wrk")
+		if err := os.MkdirAll(tmpDir, 0755); err != nil {
 			entryLogger.Error("Failed to create temp directory", "error", err)
 			continue
 		}
-		defer os.RemoveAll(tmpDir)
 
 		_, err = vendor.RetrieveFirmware(entry, tmpDir)
 		if err != nil {
@@ -92,6 +91,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 			entryLogger.Error("Failed to build package", "error", err)
 			continue
 		}
+		os.RemoveAll(tmpDir)
 
 		processed++
 		entryLogger.Info("Successfully processed firmware")

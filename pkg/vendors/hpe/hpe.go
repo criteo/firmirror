@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"slices"
 	"strings"
@@ -79,8 +80,10 @@ func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir stri
 	}
 
 	filepath := path.Join(tmpDir, path.Base(hpeEntry.Filename))
-	if err := utils.DownloadFileToDest(hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
-		return "", err
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		if err := utils.DownloadFileToDest(hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
+			return "", err
+		}
 	}
 
 	// Store the download path in the entry for later processing
