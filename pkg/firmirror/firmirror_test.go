@@ -348,12 +348,13 @@ func TestFimirrorSyncer_BuildPackage(t *testing.T) {
 		}
 
 		// Create a dummy firmware file
-		firmwareFile := filepath.Join(tmpDir, "firmware.bin")
+		firmwareFilename := "firmware.bin"
+		firmwareFile := filepath.Join(tmpDir, firmwareFilename)
 		err := os.WriteFile(firmwareFile, []byte("test firmware"), 0644)
 		require.NoError(t, err, "Should create test firmware file")
 
 		// Note: This will fail without fwupdtool, but we can test XML creation
-		syncer.buildPackage(component, tmpDir)
+		syncer.buildPackage(component, firmwareFilename, tmpDir)
 
 		// Verify metainfo XML was created
 		metainfoPath := filepath.Join(tmpDir, "firmware.metainfo.xml")

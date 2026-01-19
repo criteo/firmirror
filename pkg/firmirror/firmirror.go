@@ -85,8 +85,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 		}
 
 		// Build package
-		err = f.buildPackage(appstream, tmpDir)
-		if err != nil {
+		if err = f.buildPackage(appstream, fwName, tmpDir); err != nil {
 			entryLogger.Error("Failed to build package", "error", err)
 			continue
 		}
@@ -100,29 +99,20 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 	return nil
 }
 
-func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, tmpDir string) error {
+func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir string) error {
+	fwPath := path.Join(tmpDir, fwFile)
+	fwMeta := path.Join(tmpDir, "firmware.metainfo.xml")
 	outBytes := []byte(xml.Header)
 	xmlBytes, err := xml.MarshalIndent(appstream, "", "  ")
 	if err != nil {
 		return err
 	}
 	outBytes = append(outBytes, xmlBytes...)
-
-	fwFiles, err := os.ReadDir(tmpDir)
-	if err != nil {
+	if err = os.WriteFile(fwMeta, outBytes, 0644); err != nil {
 		return err
 	}
 
-	fwupdArgs := []string{"build-cabinet", fwFiles[0].Name() + ".cab", path.Join(tmpDir, "/firmware.metainfo.xml")}
-	for _, f := range fwFiles {
-		fwupdArgs = append(fwupdArgs, path.Join(tmpDir, f.Name()))
-	}
-
-	err = os.WriteFile(path.Join(tmpDir, "/firmware.metainfo.xml"), outBytes, 0644)
-	if err != nil {
-		return err
-	}
-
+	fwupdArgs := []string{"build-cabinet", fwFile + ".cab", fwMeta, fwPath}
 	cmd := exec.Command("fwupdtool", fwupdArgs...)
 	cmd.Dir = f.Config.OutputDir
 	out, err := cmd.CombinedOutput()
