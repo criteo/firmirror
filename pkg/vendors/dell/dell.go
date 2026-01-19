@@ -8,6 +8,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/criteo/firmirror/pkg/firmirror"
 	"github.com/criteo/firmirror/pkg/lvfs"
@@ -189,7 +190,7 @@ func processFirmware(fw DellSoftwareComponent) (*lvfs.Component, error) {
 
 	out.Releases = append(out.Releases, lvfs.Release{
 		Version:     fw.VendorVersion,
-		Date:        fw.DateTime.String(),
+		Date:        fw.DateTime.Format(time.DateOnly),
 		Description: out.Description,
 		Urgency:     getUrgency(fw.Criticality.Value),
 		Checksum: lvfs.Checksum{
