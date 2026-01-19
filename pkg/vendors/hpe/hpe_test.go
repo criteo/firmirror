@@ -64,14 +64,16 @@ func TestHPEVendor_RetrieveFirmware(t *testing.T) {
 	}
 
 	// Test retrieving firmware
-	filepath, err := vendor.RetrieveFirmware(entry, tmpDir)
+	err := vendor.RetrieveFirmware(entry, tmpDir)
 	assert.NoError(t, err, "RetrieveFirmware should not return an error")
-	assert.NotEmpty(t, filepath, "Filepath should not be empty")
-	assert.FileExists(t, filepath, "Downloaded file should exist")
-	assert.Equal(t, filepath, entry.downloadPath, "Download path should be stored in entry")
+
+	// Check that file was created
+	expectedPath := filepath.Join(tmpDir, "test-firmware-v1.0.0.fwpkg")
+	assert.FileExists(t, expectedPath, "Downloaded file should exist")
+	assert.Equal(t, expectedPath, entry.downloadPath, "Download path should be stored in entry")
 
 	// Verify file content
-	content, err := os.ReadFile(filepath)
+	content, err := os.ReadFile(expectedPath)
 	assert.NoError(t, err, "Should be able to read downloaded file")
 	expectedContent := "Mock firmware content for test-firmware-v1.0.0.fwpkg"
 	assert.Equal(t, expectedContent, string(content), "File content should match expected")

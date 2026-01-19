@@ -177,15 +177,15 @@ func TestDellVendor_RetrieveFirmware(t *testing.T) {
 	}
 
 	// Test retrieving firmware
-	filepath, err := vendor.RetrieveFirmware(entry, tmpDir)
+	err := vendor.RetrieveFirmware(entry, tmpDir)
 	assert.NoError(t, err, "RetrieveFirmware should not return an error")
-	assert.NotEmpty(t, filepath, "Filepath should not be empty")
 
 	// Check that file was created
-	assert.FileExists(t, filepath, "Downloaded file should exist")
+	expectedPath := filepath.Join(tmpDir, "firmware1.exe")
+	assert.FileExists(t, expectedPath, "Downloaded file should exist")
 
 	// Verify file content
-	content, err := os.ReadFile(filepath)
+	content, err := os.ReadFile(expectedPath)
 	assert.NoError(t, err, "Should be able to read downloaded file")
 
 	expectedContent := "Mock Dell firmware content for firmware1.exe"

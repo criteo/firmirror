@@ -63,8 +63,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 			continue
 		}
 
-		_, err = vendor.RetrieveFirmware(entry, tmpDir)
-		if err != nil {
+		if err = vendor.RetrieveFirmware(entry, tmpDir); err != nil {
 			entryLogger.Error("Failed to retrieve firmware", "error", err)
 			continue
 		}

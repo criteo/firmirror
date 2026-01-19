@@ -104,21 +104,21 @@ func (dv *DellVendor) filterCatalog(catalog *DellCatalog) *DellCatalog {
 	return &filteredCatalog
 }
 
-func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) (string, error) {
+func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) error {
 	dellEntry, ok := entry.(*DellFirmwareEntry)
 	if !ok {
-		return "", fmt.Errorf("invalid entry type for Dell vendor")
+		return fmt.Errorf("invalid entry type for Dell vendor")
 	}
 
 	fwPath := dellEntry.DellSoftwareComponent.Path
 	filepath := path.Join(tmpDir, path.Base(fwPath))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := utils.DownloadFileToDest(dv.BaseURL+"/"+fwPath, filepath); err != nil {
-			return "", err
+			return err
 		}
 	}
 
-	return filepath, nil
+	return nil
 }
 
 func (dc *DellCatalog) ListEntries() []firmirror.FirmwareEntry {

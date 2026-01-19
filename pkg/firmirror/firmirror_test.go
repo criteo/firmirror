@@ -27,9 +27,9 @@ func (m *MockVendor) FetchCatalog() (Catalog, error) {
 	return m.catalog, nil
 }
 
-func (m *MockVendor) RetrieveFirmware(entry FirmwareEntry, tmpDir string) (string, error) {
+func (m *MockVendor) RetrieveFirmware(entry FirmwareEntry, tmpDir string) error {
 	if m.retrieveErr != nil {
-		return "", m.retrieveErr
+		return m.retrieveErr
 	}
 
 	filename := entry.GetFilename()
@@ -42,11 +42,11 @@ func (m *MockVendor) RetrieveFirmware(entry FirmwareEntry, tmpDir string) (strin
 
 	err := os.WriteFile(filepath, []byte(content), 0644)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	m.retrievedFiles = append(m.retrievedFiles, filename)
-	return filepath, nil
+	return nil
 }
 
 // MockCatalog implements the Catalog interface for testing

@@ -73,22 +73,22 @@ func (hv *HPEVendor) filterCatalog(catalog *HPECatalog) *HPECatalog {
 }
 
 // RetrieveFirmware implements the Vendor interface
-func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) (string, error) {
+func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) error {
 	hpeEntry, ok := entry.(*HPEFirmwareEntry)
 	if !ok {
-		return "", fmt.Errorf("invalid entry type for HPE vendor")
+		return fmt.Errorf("invalid entry type for HPE vendor")
 	}
 
 	filepath := path.Join(tmpDir, path.Base(hpeEntry.Filename))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := utils.DownloadFileToDest(hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
-			return "", err
+			return err
 		}
 	}
 
 	// Store the download path in the entry for later processing
 	hpeEntry.downloadPath = filepath
-	return filepath, nil
+	return nil
 }
 
 // ListEntries implements the Catalog interface for HPECatalog

@@ -5,9 +5,9 @@ import "github.com/criteo/firmirror/pkg/lvfs"
 type Vendor interface {
 	// FetchCatalog retrieves the catalog of firmware for the vendor.
 	FetchCatalog() (Catalog, error)
-	// RetrieveFirmware downloads the firmware file for the given firmware entry.
+	// RetrieveFirmware downloads the firmware file for the given firmware entry to tmpDir.
 	// For vendors like HPE, this step is required before processing.
-	RetrieveFirmware(entry FirmwareEntry, tmpDir string) (string, error)
+	RetrieveFirmware(entry FirmwareEntry, tmpDir string) error
 }
 
 // Catalog represents a generic catalog of firmware entries.
