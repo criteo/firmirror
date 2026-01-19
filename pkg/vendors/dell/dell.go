@@ -196,10 +196,6 @@ func processFirmware(fw DellSoftwareComponent) (*lvfs.Component, error) {
 		Date:        fw.DateTime.Format(time.DateOnly),
 		Description: out.Description,
 		Urgency:     getUrgency(fw.Criticality.Value),
-		Checksum: lvfs.Checksum{
-			Filename: path.Base(fw.Path),
-			Target:   "content",
-		},
 	})
 
 	switch fw.LUCategory.Value {
