@@ -8,12 +8,14 @@ type HPEVendor struct {
 // HPEVendor implements the Catalog interface for HPE
 type HPECatalog struct {
 	Entries map[string]HPECatalogEntry `json:",inline"`
+	BaseURL string
 }
 
 // HPEFirmwareEntry implements the FirmwareEntry interface for HPE
 type HPEFirmwareEntry struct {
 	Filename     string
 	Entry        *HPECatalogEntry
+	SourceURL    string
 	downloadPath string // Store download path for processing
 }
 

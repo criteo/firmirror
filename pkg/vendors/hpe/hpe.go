@@ -49,6 +49,7 @@ func (hv *HPEVendor) fetchCatalog() (*HPECatalog, error) {
 
 	catalog := &HPECatalog{
 		Entries: entries,
+		BaseURL: hv.BaseURL,
 	}
 	return catalog, nil
 }
@@ -65,6 +66,7 @@ func (hv *HPEVendor) filterCatalog(catalog *HPECatalog) *HPECatalog {
 
 	filteredCatalog := &HPECatalog{
 		Entries: filteredEntries,
+		BaseURL: catalog.BaseURL,
 	}
 	return filteredCatalog
 }
@@ -92,8 +94,9 @@ func (hc *HPECatalog) ListEntries() []firmirror.FirmwareEntry {
 	for filename, catalogEntry := range hc.Entries {
 		entry := catalogEntry // Create a copy to avoid pointer issues
 		entries = append(entries, &HPEFirmwareEntry{
-			Filename: filename,
-			Entry:    &entry,
+			Filename:  filename,
+			Entry:     &entry,
+			SourceURL: hc.BaseURL + "/current/" + filename,
 		})
 	}
 	return entries
@@ -102,6 +105,11 @@ func (hc *HPECatalog) ListEntries() []firmirror.FirmwareEntry {
 // GetFilename implements the FirmwareEntry interface
 func (hfe *HPEFirmwareEntry) GetFilename() string {
 	return hfe.Filename
+}
+
+// GetSourceURL implements the FirmwareEntry interface
+func (hfe *HPEFirmwareEntry) GetSourceURL() string {
+	return hfe.SourceURL
 }
 
 // ToAppstream implements the FirmwareEntry interface
