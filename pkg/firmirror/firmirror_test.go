@@ -1,12 +1,14 @@
 package firmirror
 
 import (
+	"encoding/xml"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/criteo/firmirror/pkg/lvfs"
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -379,5 +381,409 @@ func TestFimirrorSyncer_BuildPackage(t *testing.T) {
 		assert.Contains(t, string(content), "<?xml version", "Should contain XML header")
 		assert.Contains(t, string(content), "com.test.firmware", "Should contain component ID")
 		assert.Contains(t, string(content), "Test Firmware", "Should contain component name")
+	})
+}
+
+func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
+	t.Run("LoadsExistingMetadata", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// Create test metadata
+		testComponents := &lvfs.Components{
+			Origin: "firmirror",
+			Component: []lvfs.Component{
+				{
+					Type:            "firmware",
+					ID:              "com.test.firmware1",
+					Name:            "Test Firmware 1",
+					MetadataLicense: "proprietary",
+					Releases: []lvfs.Release{
+						{
+							Version: "1.0.0",
+							Checksums: []lvfs.Checksum{
+								{
+									Filename: "firmware1.bin",
+									Type:     "sha256",
+									Value:    "abc123",
+								},
+							},
+						},
+					},
+				},
+				{
+					Type:            "firmware",
+					ID:              "com.test.firmware2",
+					Name:            "Test Firmware 2",
+					MetadataLicense: "proprietary",
+					Releases: []lvfs.Release{
+						{
+							Version: "2.0.0",
+							Checksums: []lvfs.Checksum{
+								{
+									Filename: "firmware2.bin",
+									Type:     "sha256",
+									Value:    "def456",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Write compressed metadata file
+		metadataPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		file, err := os.Create(metadataPath)
+		require.NoError(t, err)
+
+		zstWriter, err := zstd.NewWriter(file)
+		require.NoError(t, err)
+
+		xmlData, err := xml.Marshal(testComponents)
+		require.NoError(t, err)
+		_, err = zstWriter.Write([]byte(xml.Header))
+		require.NoError(t, err)
+		_, err = zstWriter.Write(xmlData)
+		require.NoError(t, err)
+		zstWriter.Close()
+		file.Close()
+
+		// Load metadata
+		err = syncer.LoadMetadata()
+		require.NoError(t, err, "Should load metadata successfully")
+
+		// Verify loaded metadata
+		assert.NotNil(t, syncer.existingMetadata, "Existing metadata should be loaded")
+		assert.Len(t, syncer.existingMetadata.Component, 2, "Should have 2 components")
+		assert.Equal(t, "com.test.firmware1", syncer.existingMetadata.Component[0].ID)
+		assert.Equal(t, "com.test.firmware2", syncer.existingMetadata.Component[1].ID)
+
+		// Verify index was built
+		assert.Len(t, syncer.existingIndex, 2, "Should have 2 entries in index")
+		assert.True(t, syncer.existingIndex["firmware1.bin"], "Should have firmware1 in index")
+		assert.True(t, syncer.existingIndex["firmware2.bin"], "Should have firmware2 in index")
+	})
+
+	t.Run("HandlesNonExistentMetadata", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// No metadata file exists
+		err := syncer.LoadMetadata()
+		assert.NoError(t, err, "Should not error when metadata doesn't exist")
+		assert.Nil(t, syncer.existingMetadata, "Existing metadata should be nil")
+		assert.Empty(t, syncer.existingIndex, "Index should be empty")
+	})
+
+	t.Run("HandlesCorruptedMetadata", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// Create corrupted metadata file
+		metadataPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		err := os.WriteFile(metadataPath, []byte("not valid zstd"), 0644)
+		require.NoError(t, err)
+
+		// Load should fail
+		err = syncer.LoadMetadata()
+		assert.Error(t, err, "Should error with corrupted metadata")
+		// zstd error message may vary but should indicate invalid input
+		assert.Contains(t, err.Error(), "failed to", "Error should indicate failure")
+	})
+}
+
+func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
+	t.Run("SavesNewComponents", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// Add new components
+		syncer.newComponents = []lvfs.Component{
+			{
+				Type:            "firmware",
+				ID:              "com.test.firmware1",
+				Name:            "Test Firmware 1",
+				MetadataLicense: "proprietary",
+				Releases: []lvfs.Release{
+					{
+						Version: "1.0.0",
+						Checksums: []lvfs.Checksum{
+							{
+								Filename: "firmware1.bin",
+								Type:     "sha256",
+								Value:    "abc123",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Save metadata
+		err := syncer.SaveMetadata()
+		require.NoError(t, err, "Should save metadata successfully")
+
+		// Verify compressed file exists
+		metadataZstPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		assert.FileExists(t, metadataZstPath, "Compressed metadata should exist")
+
+		// Read and verify content
+		file, err := os.Open(metadataZstPath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		zstReader, err := zstd.NewReader(file)
+		require.NoError(t, err)
+		defer zstReader.Close()
+
+		var components lvfs.Components
+		decoder := xml.NewDecoder(zstReader)
+		err = decoder.Decode(&components)
+		require.NoError(t, err, "Should decode saved metadata")
+
+		assert.Len(t, components.Component, 1, "Should have 1 component")
+		assert.Equal(t, "com.test.firmware1", components.Component[0].ID)
+		assert.Equal(t, "firmirror", components.Origin)
+
+		// Verify location tag was added
+		assert.Equal(t, "firmware1.bin.cab", components.Component[0].Releases[0].Location,
+			"Should have location tag set")
+	})
+
+	t.Run("MergesExistingAndNewComponents", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// Set existing metadata
+		syncer.existingMetadata = &lvfs.Components{
+			Component: []lvfs.Component{
+				{
+					Type: "firmware",
+					ID:   "com.existing.firmware",
+					Name: "Existing Firmware",
+					Releases: []lvfs.Release{
+						{
+							Version: "1.0.0",
+							Checksums: []lvfs.Checksum{
+								{Filename: "existing.bin"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Add new components
+		syncer.newComponents = []lvfs.Component{
+			{
+				Type: "firmware",
+				ID:   "com.new.firmware",
+				Name: "New Firmware",
+				Releases: []lvfs.Release{
+					{
+						Version: "2.0.0",
+						Checksums: []lvfs.Checksum{
+							{Filename: "new.bin"},
+						},
+					},
+				},
+			},
+		}
+
+		// Save metadata
+		err := syncer.SaveMetadata()
+		require.NoError(t, err)
+
+		// Read and verify merged content
+		metadataZstPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		file, err := os.Open(metadataZstPath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		zstReader, err := zstd.NewReader(file)
+		require.NoError(t, err)
+		defer zstReader.Close()
+
+		var components lvfs.Components
+		decoder := xml.NewDecoder(zstReader)
+		err = decoder.Decode(&components)
+		require.NoError(t, err)
+
+		assert.Len(t, components.Component, 2, "Should have 2 components (existing + new)")
+
+		// Find components by ID
+		var existingFound, newFound bool
+		for _, comp := range components.Component {
+			if comp.ID == "com.existing.firmware" {
+				existingFound = true
+				assert.Equal(t, "existing.bin.cab", comp.Releases[0].Location)
+			}
+			if comp.ID == "com.new.firmware" {
+				newFound = true
+				assert.Equal(t, "new.bin.cab", comp.Releases[0].Location)
+			}
+		}
+		assert.True(t, existingFound, "Should have existing component")
+		assert.True(t, newFound, "Should have new component")
+	})
+
+	t.Run("MergesReleasesForSameComponentID", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// Set existing metadata with a component
+		syncer.existingMetadata = &lvfs.Components{
+			Component: []lvfs.Component{
+				{
+					Type: "firmware",
+					ID:   "com.test.firmware",
+					Name: "Test Firmware",
+					Releases: []lvfs.Release{
+						{
+							Version: "1.0.0",
+							Checksums: []lvfs.Checksum{
+								{Filename: "firmware-v1.bin"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Add new release for the same component ID
+		syncer.newComponents = []lvfs.Component{
+			{
+				Type: "firmware",
+				ID:   "com.test.firmware",
+				Name: "Test Firmware",
+				Releases: []lvfs.Release{
+					{
+						Version: "2.0.0",
+						Checksums: []lvfs.Checksum{
+							{Filename: "firmware-v2.bin"},
+						},
+					},
+				},
+			},
+		}
+
+		// Save metadata
+		err := syncer.SaveMetadata()
+		require.NoError(t, err)
+
+		// Read and verify merged content
+		metadataZstPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		file, err := os.Open(metadataZstPath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		zstReader, err := zstd.NewReader(file)
+		require.NoError(t, err)
+		defer zstReader.Close()
+
+		var components lvfs.Components
+		decoder := xml.NewDecoder(zstReader)
+		err = decoder.Decode(&components)
+		require.NoError(t, err)
+
+		assert.Len(t, components.Component, 1, "Should have 1 component")
+		assert.Equal(t, "com.test.firmware", components.Component[0].ID)
+		assert.Len(t, components.Component[0].Releases, 2, "Should have 2 releases")
+
+		// Verify both releases are present
+		versions := []string{}
+		for _, release := range components.Component[0].Releases {
+			versions = append(versions, release.Version)
+		}
+		assert.Contains(t, versions, "1.0.0", "Should have version 1.0.0")
+		assert.Contains(t, versions, "2.0.0", "Should have version 2.0.0")
+	})
+
+	t.Run("SkipsWhenNoNewComponents", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// No new components
+		syncer.newComponents = []lvfs.Component{}
+
+		// Save should skip
+		err := syncer.SaveMetadata()
+		assert.NoError(t, err, "Should not error")
+
+		// Verify no metadata file was created
+		metadataZstPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		assert.NoFileExists(t, metadataZstPath, "Should not create metadata file")
+	})
+
+	t.Run("AddsLocationTagsToReleases", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+		})
+
+		// Add components without location tags
+		syncer.newComponents = []lvfs.Component{
+			{
+				Type: "firmware",
+				ID:   "com.test.firmware",
+				Releases: []lvfs.Release{
+					{
+						Version:  "1.0.0",
+						Location: "", // No location
+						Checksums: []lvfs.Checksum{
+							{Filename: "firmware.bin"},
+						},
+					},
+					{
+						Version:  "2.0.0",
+						Location: "already-set.cab", // Already has location
+						Checksums: []lvfs.Checksum{
+							{Filename: "firmware-v2.bin"},
+						},
+					},
+				},
+			},
+		}
+
+		// Save metadata
+		err := syncer.SaveMetadata()
+		require.NoError(t, err)
+
+		// Read and verify
+		metadataZstPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		file, err := os.Open(metadataZstPath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		zstReader, err := zstd.NewReader(file)
+		require.NoError(t, err)
+		defer zstReader.Close()
+
+		var components lvfs.Components
+		decoder := xml.NewDecoder(zstReader)
+		err = decoder.Decode(&components)
+		require.NoError(t, err)
+
+		// Verify locations
+		releases := components.Component[0].Releases
+		assert.Equal(t, "firmware.bin.cab", releases[0].Location,
+			"Should add location based on checksum filename")
+		assert.Equal(t, "already-set.cab", releases[1].Location,
+			"Should preserve existing location")
 	})
 }

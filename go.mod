@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/alecthomas/kong v1.10.0
 	github.com/google/uuid v1.6.0
+	github.com/klauspost/compress v1.18.3
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/text v0.23.0
 )
