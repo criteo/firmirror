@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"log/slog"
 	"maps"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 
 	"github.com/criteo/firmirror/pkg/lvfs"
+	"github.com/klauspost/compress/zstd"
 )
 
 type FirmirrorConfig struct {
@@ -21,8 +23,11 @@ type FirmirrorConfig struct {
 }
 
 type FimirrorSyncer struct {
-	Config  FirmirrorConfig
-	vendors map[string]Vendor
+	Config           FirmirrorConfig
+	vendors          map[string]Vendor
+	existingMetadata *lvfs.Components // Loaded metadata from existing metadata.xml.gz
+	existingIndex    map[string]bool  // Index of firmware already in metadata (by filename)
+	newComponents    []lvfs.Component // Components accumulated during this run
 }
 
 func NewFimirrorSyncer(config FirmirrorConfig) *FimirrorSyncer {
@@ -37,8 +42,9 @@ func NewFimirrorSyncer(config FirmirrorConfig) *FimirrorSyncer {
 	}
 
 	return &FimirrorSyncer{
-		Config:  config,
-		vendors: make(map[string]Vendor),
+		Config:        config,
+		vendors:       make(map[string]Vendor),
+		existingIndex: make(map[string]bool),
 	}
 }
 
@@ -66,10 +72,19 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 
 	entries := catalog.ListEntries()
 	processed := 0
+	skipped := 0
 
 	for _, entry := range entries {
 		fwName := entry.GetFilename()
 		entryLogger := logger.With("firmware", fwName)
+
+		// Check if firmware is already in metadata index
+		if f.existingIndex[fwName] {
+			entryLogger.Info("Firmware already in metadata index, skipping")
+			skipped++
+			continue
+		}
+
 		entryLogger.Info("Processing firmware")
 
 		tmpDir := filepath.Join(f.Config.CacheDir, fwName+".wrk")
@@ -107,11 +122,14 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 		}
 		os.RemoveAll(tmpDir)
 
+		// Accumulate component for metadata generation
+		f.newComponents = append(f.newComponents, *appstream)
+
 		processed++
 		entryLogger.Info("Successfully processed firmware")
 	}
 
-	logger.Info("Completed vendor processing", "processed", processed)
+	logger.Info("Completed vendor processing", "processed", processed, "skipped", skipped, "total", len(entries))
 	return nil
 }
 
@@ -183,4 +201,156 @@ func calculateChecksums(filepath string) (sha1Hash, sha256Hash string, err error
 	sha256Hash = hex.EncodeToString(sha256Hasher.Sum(nil))
 
 	return sha1Hash, sha256Hash, nil
+}
+
+// LoadMetadata loads existing metadata.xml.zst and builds an index of existing firmware
+func (f *FimirrorSyncer) LoadMetadata() error {
+	metadataPath := filepath.Join(f.Config.OutputDir, "metadata.xml.zst")
+
+	// Check if metadata file exists
+	if _, err := os.Stat(metadataPath); os.IsNotExist(err) {
+		slog.Info("No existing metadata found, starting fresh")
+		return nil
+	}
+
+	// Open and decompress metadata file
+	file, err := os.Open(metadataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open metadata file: %w", err)
+	}
+	defer file.Close()
+
+	zstReader, err := zstd.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("failed to create zstd reader: %w", err)
+	}
+	defer zstReader.Close()
+
+	// Read and parse XML
+	data, err := io.ReadAll(zstReader)
+	if err != nil {
+		return fmt.Errorf("failed to read metadata file: %w", err)
+	}
+
+	var components lvfs.Components
+	if err := xml.Unmarshal(data, &components); err != nil {
+		return fmt.Errorf("failed to parse metadata XML: %w", err)
+	}
+
+	f.existingMetadata = &components
+
+	// Build index of existing firmware files from checksums
+	for _, comp := range components.Component {
+		for _, release := range comp.Releases {
+			for _, checksum := range release.Checksums {
+				if checksum.Filename != "" {
+					f.existingIndex[checksum.Filename] = true
+				}
+			}
+		}
+	}
+
+	slog.Info("Loaded existing metadata",
+		"components", len(components.Component),
+		"firmware_files", len(f.existingIndex))
+
+	return nil
+}
+
+// SaveMetadata saves the combined metadata (existing + accumulated) to metadata.xml.zst
+func (f *FimirrorSyncer) SaveMetadata() error {
+	logger := slog.With("component", "metadata-save")
+
+	if len(f.newComponents) == 0 {
+		logger.Info("No new component, skipping metadata update")
+		return nil
+	}
+
+	componentMap := make(map[string]*lvfs.Component)
+
+	// Add existing components first
+	if f.existingMetadata != nil {
+		for i := range f.existingMetadata.Component {
+			comp := f.existingMetadata.Component[i]
+			componentMap[comp.ID] = &comp
+		}
+	}
+
+	// Add or merge new components
+	for _, comp := range f.newComponents {
+		if existing, ok := componentMap[comp.ID]; ok {
+			// Merge releases if component already exists
+			logger.Info("Merging component", "id", comp.ID)
+			existing.Releases = append(existing.Releases, comp.Releases...)
+		} else {
+			// Add new component
+			componentMap[comp.ID] = &comp
+		}
+	}
+
+	// Build final components structure
+	components := &lvfs.Components{
+		Origin: "firmirror",
+	}
+	for _, component := range componentMap {
+		// Ensure each release has a location tag
+		for i := range component.Releases {
+			release := &component.Releases[i]
+			if release.Location == "" && len(release.Checksums) > 0 {
+				// FIXME: this is brittle
+				release.Location = release.Checksums[0].Filename + ".cab"
+			}
+		}
+		components.Component = append(components.Component, *component)
+	}
+
+	// Write metadata using simple XML marshaling
+	metadataPath := filepath.Join(f.Config.OutputDir, "metadata.xml")
+	outBytes := []byte(xml.Header)
+	xmlBytes, err := xml.MarshalIndent(components, "", "  ")
+	if err != nil {
+		return err
+	}
+	outBytes = append(outBytes, xmlBytes...)
+	if err := os.WriteFile(metadataPath, outBytes, 0644); err != nil {
+		return err
+	}
+
+	// Compress metadata
+	if err := compressMetadata(metadataPath); err != nil {
+		return err
+	}
+
+	logger.Info("Metadata saved successfully",
+		"total_components", len(componentMap),
+		"new_components", len(f.newComponents))
+
+	return nil
+}
+
+func compressMetadata(filepath string) error {
+	inputFile, err := os.Open(filepath)
+	if err != nil {
+		return err
+	}
+	defer inputFile.Close()
+
+	outputFile, err := os.Create(filepath + ".zst")
+	if err != nil {
+		return err
+	}
+	defer outputFile.Close()
+
+	zstWriter, err := zstd.NewWriter(outputFile)
+	if err != nil {
+		return err
+	}
+	defer zstWriter.Close()
+
+	_, err = io.Copy(zstWriter, inputFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

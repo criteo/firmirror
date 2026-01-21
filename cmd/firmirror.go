@@ -43,6 +43,11 @@ func main() {
 		fm.RegisterVendor("dell", dellVendor)
 	}
 
+	// Load existing metadata to avoid reprocessing
+	if err := fm.LoadMetadata(); err != nil {
+		slog.Error("Failed to load existing metadata", "error", err)
+	}
+
 	slog.Info("Starting firmware processing", "vendors", len(fm.GetAllVendors()))
 
 	for vendorName, vendor := range fm.GetAllVendors() {
@@ -52,5 +57,8 @@ func main() {
 		}
 	}
 
-	slog.Info("Firmware processing completed")
+	slog.Info("Saving metadata index")
+	if err := fm.SaveMetadata(); err != nil {
+		slog.Error("Failed to save metadata", "error", err)
+	}
 }

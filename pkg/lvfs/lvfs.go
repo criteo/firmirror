@@ -43,6 +43,7 @@ type Release struct {
 	Version         string      `xml:"version,attr"`
 	Date            string      `xml:"date,attr"`
 	InstallDuration int         `xml:"install_duration,attr"`
+	Location        string      `xml:"location,omitempty"`
 	Checksums       []Checksum  `xml:"checksum"`
 	Description     Description `xml:"description"`
 	Issues          []Issue     `xml:"issues>issue,omitempty"`
