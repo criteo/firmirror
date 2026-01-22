@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -111,7 +111,7 @@ func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir str
 	}
 
 	fwPath := dellEntry.DellSoftwareComponent.Path
-	filepath := path.Join(tmpDir, path.Base(fwPath))
+	filepath := filepath.Join(tmpDir, filepath.Base(fwPath))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := utils.DownloadFileToDest(dv.BaseURL+"/"+fwPath, filepath); err != nil {
 			return err
@@ -125,7 +125,7 @@ func (dc *DellCatalog) ListEntries() []firmirror.FirmwareEntry {
 	entries := []firmirror.FirmwareEntry{}
 	for _, fw := range dc.SoftwareComponents {
 		entries = append(entries, &DellFirmwareEntry{
-			Filename:              path.Base(fw.Path),
+			Filename:              filepath.Base(fw.Path),
 			DellSoftwareComponent: &fw,
 			SourceURL:             dc.BaseLocation + "/" + fw.Path,
 		})

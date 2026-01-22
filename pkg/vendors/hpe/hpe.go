@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -79,7 +79,7 @@ func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir stri
 		return fmt.Errorf("invalid entry type for HPE vendor")
 	}
 
-	filepath := path.Join(tmpDir, path.Base(hpeEntry.Filename))
+	filepath := filepath.Join(tmpDir, filepath.Base(hpeEntry.Filename))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := utils.DownloadFileToDest(hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
 			return err

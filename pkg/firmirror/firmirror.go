@@ -10,7 +10,7 @@ import (
 	"maps"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 
 	"github.com/criteo/firmirror/pkg/lvfs"
 )
@@ -72,7 +72,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 		entryLogger := logger.With("firmware", fwName)
 		entryLogger.Info("Processing firmware")
 
-		tmpDir := path.Join(f.Config.CacheDir, fwName+".wrk")
+		tmpDir := filepath.Join(f.Config.CacheDir, fwName+".wrk")
 		if err := os.MkdirAll(tmpDir, 0755); err != nil {
 			entryLogger.Error("Failed to create temp directory", "error", err)
 			continue
@@ -116,7 +116,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 }
 
 func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir string) error {
-	fwPath := path.Join(tmpDir, fwFile)
+	fwPath := filepath.Join(tmpDir, fwFile)
 
 	// Add checksums to all releases
 	sha1Hash, sha256Hash, err := calculateChecksums(fwPath)
@@ -141,7 +141,7 @@ func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir 
 		}
 	}
 
-	fwMeta := path.Join(tmpDir, "firmware.metainfo.xml")
+	fwMeta := filepath.Join(tmpDir, "firmware.metainfo.xml")
 	outBytes := []byte(xml.Header)
 	xmlBytes, err := xml.MarshalIndent(appstream, "", "  ")
 	if err != nil {
@@ -152,7 +152,7 @@ func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir 
 		return err
 	}
 
-	cabPath := path.Join(f.Config.OutputDir, fwFile+".cab")
+	cabPath := filepath.Join(f.Config.OutputDir, fwFile+".cab")
 	fwupdArgs := []string{"build-cabinet", cabPath, fwMeta, fwPath}
 	cmd := exec.Command("fwupdtool", fwupdArgs...)
 	out, err := cmd.CombinedOutput()
