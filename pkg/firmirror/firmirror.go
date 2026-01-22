@@ -22,7 +22,7 @@ type FirmirrorConfig struct {
 	CacheDir string // Local cache directory for temporary work
 }
 
-type FimirrorSyncer struct {
+type FirmirrorSyncer struct {
 	Config           FirmirrorConfig
 	Storage          Storage
 	vendors          map[string]Vendor
@@ -31,13 +31,13 @@ type FimirrorSyncer struct {
 	newComponents    []lvfs.Component // Components accumulated during this run
 }
 
-func NewFimirrorSyncer(config FirmirrorConfig, storage Storage) *FimirrorSyncer {
+func NewFirmirrorSyncer(config FirmirrorConfig, storage Storage) *FirmirrorSyncer {
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(config.CacheDir, 0755); err != nil {
 		slog.Error("Failed to create cache directory", "dir", config.CacheDir, "error", err)
 	}
 
-	return &FimirrorSyncer{
+	return &FirmirrorSyncer{
 		Config:        config,
 		Storage:       storage,
 		vendors:       make(map[string]Vendor),
@@ -46,18 +46,18 @@ func NewFimirrorSyncer(config FirmirrorConfig, storage Storage) *FimirrorSyncer 
 }
 
 // RegisterVendor registers a vendor with the given name
-func (f *FimirrorSyncer) RegisterVendor(name string, vendor Vendor) {
+func (f *FirmirrorSyncer) RegisterVendor(name string, vendor Vendor) {
 	f.vendors[name] = vendor
 }
 
 // GetAllVendors returns all registered vendors
-func (f *FimirrorSyncer) GetAllVendors() map[string]Vendor {
+func (f *FirmirrorSyncer) GetAllVendors() map[string]Vendor {
 	// Return a copy to prevent external modifications
 	return maps.Clone(f.vendors)
 }
 
 // processVendor processes firmware for a given vendor using the interface
-func (f *FimirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vendorName string) error {
+func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vendorName string) error {
 	logger := slog.With("vendor", vendorName)
 	logger.Info("Fetching catalog")
 
@@ -138,7 +138,7 @@ func (f *FimirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vendo
 	return nil
 }
 
-func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir string) error {
+func (f *FirmirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir string) error {
 	fwPath := filepath.Join(tmpDir, fwFile)
 
 	// Add checksums to all releases
@@ -222,7 +222,7 @@ func calculateChecksums(filepath string) (sha1Hash, sha256Hash string, err error
 }
 
 // LoadMetadata loads existing metadata.xml.zst and builds an index of existing firmware
-func (f *FimirrorSyncer) LoadMetadata() error {
+func (f *FirmirrorSyncer) LoadMetadata() error {
 	metadataKey := "metadata.xml.zst"
 
 	// Check if metadata file exists
@@ -280,7 +280,7 @@ func (f *FimirrorSyncer) LoadMetadata() error {
 }
 
 // SaveMetadata saves the combined metadata (existing + accumulated) to metadata.xml.zst
-func (f *FimirrorSyncer) SaveMetadata() error {
+func (f *FirmirrorSyncer) SaveMetadata() error {
 	logger := slog.With("component", "metadata-save")
 
 	if len(f.newComponents) == 0 {

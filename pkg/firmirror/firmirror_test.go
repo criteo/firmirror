@@ -15,7 +15,7 @@ import (
 )
 
 // createTestSyncer creates a test configuration with local storage
-func createTestSyncer(t *testing.T) (*FimirrorSyncer, string) {
+func createTestSyncer(t *testing.T) (*FirmirrorSyncer, string) {
 	tmpDir := t.TempDir()
 	storage, err := NewLocalStorage(filepath.Join(tmpDir, "output"))
 	require.NoError(t, err)
@@ -23,7 +23,7 @@ func createTestSyncer(t *testing.T) (*FimirrorSyncer, string) {
 		CacheDir: filepath.Join(tmpDir, "cache"),
 	}
 
-	return NewFimirrorSyncer(config, storage), tmpDir
+	return NewFirmirrorSyncer(config, storage), tmpDir
 }
 
 // MockVendor implements the Vendor interface for testing
@@ -96,7 +96,7 @@ func (m *MockFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
 	return m.appstream, nil
 }
 
-func TestNewFimirrorSyncer(t *testing.T) {
+func TestNewFirmirrorSyncer(t *testing.T) {
 	t.Run("CreatesSyncerWithConfig", func(t *testing.T) {
 		syncer, _ := createTestSyncer(t)
 
@@ -107,7 +107,7 @@ func TestNewFimirrorSyncer(t *testing.T) {
 	})
 }
 
-func TestFimirrorSyncer_RegisterVendor(t *testing.T) {
+func TestFirmirrorSyncer_RegisterVendor(t *testing.T) {
 	t.Run("RegistersVendors", func(t *testing.T) {
 		syncer, _ := createTestSyncer(t)
 		mockVendor1 := &MockVendor{}
@@ -123,7 +123,7 @@ func TestFimirrorSyncer_RegisterVendor(t *testing.T) {
 	})
 }
 
-func TestFimirrorSyncer_GetAllVendors(t *testing.T) {
+func TestFirmirrorSyncer_GetAllVendors(t *testing.T) {
 	t.Run("ReturnsClone", func(t *testing.T) {
 		syncer, _ := createTestSyncer(t)
 		mockVendor := &MockVendor{}
@@ -142,7 +142,7 @@ func TestFimirrorSyncer_GetAllVendors(t *testing.T) {
 	})
 }
 
-func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
+func TestFirmirrorSyncer_ProcessVendor(t *testing.T) {
 	t.Run("SuccessfulProcessing", func(t *testing.T) {
 		syncer, _ := createTestSyncer(t)
 
@@ -308,7 +308,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	})
 }
 
-func TestFimirrorSyncer_BuildPackage(t *testing.T) {
+func TestFirmirrorSyncer_BuildPackage(t *testing.T) {
 	t.Run("CreatesMetainfoXML", func(t *testing.T) {
 		syncer, tmpDir := createTestSyncer(t)
 
@@ -344,13 +344,13 @@ func TestFimirrorSyncer_BuildPackage(t *testing.T) {
 	})
 }
 
-func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
+func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 	t.Run("LoadsExistingMetadata", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
 
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
+		syncer := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir: filepath.Join(tmpDir, "cache"),
 		}, storage)
 
@@ -444,7 +444,7 @@ func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
+		syncer := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir: filepath.Join(tmpDir, "cache"),
 		}, storage)
 
@@ -461,12 +461,12 @@ func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
 	})
 }
 
-func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
+func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 	t.Run("SavesNewComponents", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
+		syncer := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir: filepath.Join(tmpDir, "cache"),
 		}, storage)
 
@@ -527,7 +527,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
+		syncer := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir: filepath.Join(tmpDir, "cache"),
 		}, storage)
 
@@ -608,7 +608,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
+		syncer := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir: filepath.Join(tmpDir, "cache"),
 		}, storage)
 
@@ -699,7 +699,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
+		syncer := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir: filepath.Join(tmpDir, "cache"),
 		}, storage)
 

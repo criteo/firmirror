@@ -40,7 +40,7 @@ func main() {
 		return
 	}
 
-	fm := firmirror.NewFimirrorSyncer(config, storage)
+	fm := firmirror.NewFirmirrorSyncer(config, storage)
 
 	if firmirror.CLI.HPEFlags.Enable {
 		for _, gen := range firmirror.CLI.HPEFlags.Gens {
