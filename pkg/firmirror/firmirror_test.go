@@ -1,6 +1,7 @@
 package firmirror
 
 import (
+	"context"
 	"encoding/xml"
 	"errors"
 	"os"
@@ -174,7 +175,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 			},
 		}
 
-		_ = syncer.ProcessVendor(mockVendor, "test-vendor")
+		_ = syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
 		// Note: This will fail because fwupdtool is not available in test environment
 		// But we can verify the vendor methods were called
@@ -193,7 +194,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 			fetchErr: errors.New("catalog fetch failed"),
 		}
 
-		err := syncer.ProcessVendor(mockVendor, "test-vendor")
+		err := syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
 		assert.Error(t, err, "Should return error when catalog fetch fails")
 		assert.Contains(t, err.Error(), "catalog fetch failed", "Error should contain original error message")
@@ -219,7 +220,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 		}
 
 		// Should not return error, but should continue processing
-		err := syncer.ProcessVendor(mockVendor, "test-vendor")
+		err := syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
 		assert.NoError(t, err, "ProcessVendor should not return error for individual firmware failures")
 	})
@@ -244,7 +245,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 		}
 
 		// Should not return error, but should continue processing
-		err := syncer.ProcessVendor(mockVendor, "test-vendor")
+		err := syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
 		assert.NoError(t, err, "ProcessVendor should not return error for individual firmware failures")
 		assert.Len(t, mockVendor.retrievedFiles, 1, "Firmware should be retrieved before appstream conversion")
@@ -264,7 +265,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 			},
 		}
 
-		err := syncer.ProcessVendor(mockVendor, "test-vendor")
+		err := syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
 		assert.NoError(t, err, "Should succeed with empty catalog")
 		assert.Empty(t, mockVendor.retrievedFiles, "No firmware should be retrieved")
@@ -304,7 +305,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 			},
 		}
 
-		syncer.ProcessVendor(mockVendor, "test-vendor")
+		syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
 		assert.Len(t, mockVendor.retrievedFiles, 2, "Both firmware files should be retrieved")
 		assert.Contains(t, mockVendor.retrievedFiles, "firmware1.bin", "Should retrieve firmware1")
@@ -334,7 +335,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 			},
 		}
 
-		syncer.ProcessVendor(mockVendor, "test-vendor")
+		syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
 		entries, err := os.ReadDir(tmpDir)
 		require.NoError(t, err, "Should be able to read output directory")

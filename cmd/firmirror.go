@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/alecthomas/kong"
 
@@ -11,12 +15,14 @@ import (
 )
 
 func main() {
-	ctx := kong.Parse(&firmirror.CLI)
-	switch ctx.Command() {
+	cli := kong.Parse(&firmirror.CLI)
+	switch cli.Command() {
 	case "refresh <out-dir>":
 	default:
-		panic(ctx.Command())
+		panic(cli.Command())
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	fmConf := firmirror.FirmirrorConfig{
 		OutputDir: firmirror.CLI.Refresh.OutDir,
@@ -43,6 +49,15 @@ func main() {
 		fm.RegisterVendor("dell", dellVendor)
 	}
 
+	defer func() {
+		slog.Info("Saving repository metadata")
+		if err := fm.SaveMetadata(); err != nil {
+			slog.Error("Failed to save metadata", "error", err)
+		}
+
+		stop()
+	}()
+
 	// Load existing metadata to avoid reprocessing
 	if err := fm.LoadMetadata(); err != nil {
 		slog.Error("Failed to load existing metadata", "error", err)
@@ -51,14 +66,14 @@ func main() {
 	slog.Info("Starting firmware processing", "vendors", len(fm.GetAllVendors()))
 
 	for vendorName, vendor := range fm.GetAllVendors() {
+		if ctx.Err() != nil {
+			slog.Info("Shutdown requested, stopping processing")
+			break
+		}
+
 		slog.Info("Processing vendor", "name", vendorName)
-		if err := fm.ProcessVendor(vendor, vendorName); err != nil {
+		if err := fm.ProcessVendor(ctx, vendor, vendorName); err != nil && err != context.Canceled {
 			slog.Error("Failed to process vendor", "vendor", vendorName, "error", err)
 		}
-	}
-
-	slog.Info("Saving metadata index")
-	if err := fm.SaveMetadata(); err != nil {
-		slog.Error("Failed to save metadata", "error", err)
 	}
 }

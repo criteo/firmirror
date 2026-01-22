@@ -1,6 +1,7 @@
 package firmirror
 
 import (
+	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
@@ -60,7 +61,7 @@ func (f *FimirrorSyncer) GetAllVendors() map[string]Vendor {
 }
 
 // processVendor processes firmware for a given vendor using the interface
-func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
+func (f *FimirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vendorName string) error {
 	logger := slog.With("vendor", vendorName)
 	logger.Info("Fetching catalog")
 
@@ -75,6 +76,14 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 	skipped := 0
 
 	for _, entry := range entries {
+		// Stop if interruption raised
+		// TODO: Trickle down to downloads as well
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		fwName := entry.GetFilename()
 		entryLogger := logger.With("firmware", fwName)
 
