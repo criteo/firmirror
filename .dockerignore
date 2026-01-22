@@ -1,0 +1,54 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# Test files
+*_test.go
+testdata/
+
+# Build artifacts
+firmirror
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Output directories
+out/
+firmirror-cache/
+*.cab
+*.metainfo.xml
+metadata.xml*
+
+# Temporary files
+*.tmp
+*.bak
+*.wrk/
+
+# Notes and personal files
+notes
+CLAUDE.md
