@@ -19,31 +19,27 @@ import (
 )
 
 type FirmirrorConfig struct {
-	OutputDir string
-	CacheDir  string
+	CacheDir string // Local cache directory for temporary work
 }
 
 type FimirrorSyncer struct {
 	Config           FirmirrorConfig
+	Storage          Storage
 	vendors          map[string]Vendor
 	existingMetadata *lvfs.Components // Loaded metadata from existing metadata.xml.gz
 	existingIndex    map[string]bool  // Index of firmware already in metadata (by filename)
 	newComponents    []lvfs.Component // Components accumulated during this run
 }
 
-func NewFimirrorSyncer(config FirmirrorConfig) *FimirrorSyncer {
+func NewFimirrorSyncer(config FirmirrorConfig, storage Storage) *FimirrorSyncer {
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(config.CacheDir, 0755); err != nil {
 		slog.Error("Failed to create cache directory", "dir", config.CacheDir, "error", err)
 	}
 
-	// Create output directory if it doesn't exist
-	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
-		slog.Error("Failed to create output directory", "dir", config.OutputDir, "error", err)
-	}
-
 	return &FimirrorSyncer{
 		Config:        config,
+		Storage:       storage,
 		vendors:       make(map[string]Vendor),
 		existingIndex: make(map[string]bool),
 	}
@@ -179,13 +175,26 @@ func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir 
 		return err
 	}
 
-	cabPath := filepath.Join(f.Config.OutputDir, fwFile+".cab")
-	fwupdArgs := []string{"build-cabinet", cabPath, fwMeta, fwPath}
+	// Build CAB in the temporary directory
+	cabName := fwFile + ".cab"
+	cabPathInCache := filepath.Join(tmpDir, cabName)
+	fwupdArgs := []string{"build-cabinet", cabPathInCache, fwMeta, fwPath}
 	cmd := exec.Command("fwupdtool", fwupdArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		slog.Error("Failed to build package", "error", err, "output", string(out))
 		return err
+	}
+
+	// Write CAB to storage backend
+	cabFile, err := os.Open(cabPathInCache)
+	if err != nil {
+		return fmt.Errorf("failed to open CAB file: %w", err)
+	}
+	defer cabFile.Close()
+
+	if err := f.Storage.Write(cabName, cabFile); err != nil {
+		return fmt.Errorf("failed to write CAB to storage: %w", err)
 	}
 
 	return nil
@@ -214,22 +223,26 @@ func calculateChecksums(filepath string) (sha1Hash, sha256Hash string, err error
 
 // LoadMetadata loads existing metadata.xml.zst and builds an index of existing firmware
 func (f *FimirrorSyncer) LoadMetadata() error {
-	metadataPath := filepath.Join(f.Config.OutputDir, "metadata.xml.zst")
+	metadataKey := "metadata.xml.zst"
 
 	// Check if metadata file exists
-	if _, err := os.Stat(metadataPath); os.IsNotExist(err) {
+	exists, err := f.Storage.Exists(metadataKey)
+	if err != nil {
+		return fmt.Errorf("failed to check metadata existence: %w", err)
+	}
+	if !exists {
 		slog.Info("No existing metadata found, starting fresh")
 		return nil
 	}
 
-	// Open and decompress metadata file
-	file, err := os.Open(metadataPath)
+	// Read metadata from storage
+	reader, err := f.Storage.Read(metadataKey)
 	if err != nil {
-		return fmt.Errorf("failed to open metadata file: %w", err)
+		return fmt.Errorf("failed to read metadata file: %w", err)
 	}
-	defer file.Close()
+	defer reader.Close()
 
-	zstReader, err := zstd.NewReader(file)
+	zstReader, err := zstd.NewReader(reader)
 	if err != nil {
 		return fmt.Errorf("failed to create zstd reader: %w", err)
 	}
@@ -313,21 +326,37 @@ func (f *FimirrorSyncer) SaveMetadata() error {
 		components.Component = append(components.Component, *component)
 	}
 
-	// Write metadata using simple XML marshaling
-	metadataPath := filepath.Join(f.Config.OutputDir, "metadata.xml")
+	// Marshal metadata to XML
 	outBytes := []byte(xml.Header)
 	xmlBytes, err := xml.MarshalIndent(components, "", "  ")
 	if err != nil {
 		return err
 	}
 	outBytes = append(outBytes, xmlBytes...)
+
+	// Write uncompressed metadata to temporary file for compression
+	metadataPath := filepath.Join(f.Config.CacheDir, "metadata.xml")
 	if err := os.WriteFile(metadataPath, outBytes, 0644); err != nil {
 		return err
 	}
+	defer os.Remove(metadataPath) // Clean up temp file
 
 	// Compress metadata
+	compressedPath := metadataPath + ".zst"
 	if err := compressMetadata(metadataPath); err != nil {
 		return err
+	}
+	defer os.Remove(compressedPath) // Clean up compressed temp file
+
+	// Write compressed metadata to storage
+	compressedFile, err := os.Open(compressedPath)
+	if err != nil {
+		return fmt.Errorf("failed to open compressed metadata: %w", err)
+	}
+	defer compressedFile.Close()
+
+	if err := f.Storage.Write("metadata.xml.zst", compressedFile); err != nil {
+		return fmt.Errorf("failed to write metadata to storage: %w", err)
 	}
 
 	logger.Info("Metadata saved successfully",

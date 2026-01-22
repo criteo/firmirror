@@ -14,6 +14,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// createTestSyncer creates a test configuration with local storage
+func createTestSyncer(t *testing.T) (*FimirrorSyncer, string) {
+	tmpDir := t.TempDir()
+	storage, err := NewLocalStorage(filepath.Join(tmpDir, "output"))
+	require.NoError(t, err)
+	config := FirmirrorConfig{
+		CacheDir: filepath.Join(tmpDir, "cache"),
+	}
+
+	return NewFimirrorSyncer(config, storage), tmpDir
+}
+
 // MockVendor implements the Vendor interface for testing
 type MockVendor struct {
 	catalog         *MockCatalog
@@ -86,14 +98,10 @@ func (m *MockFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
 
 func TestNewFimirrorSyncer(t *testing.T) {
 	t.Run("CreatesSyncerWithConfig", func(t *testing.T) {
-		config := FirmirrorConfig{
-			OutputDir: "/tmp/test",
-		}
-
-		syncer := NewFimirrorSyncer(config)
+		syncer, _ := createTestSyncer(t)
 
 		assert.NotNil(t, syncer, "Syncer should not be nil")
-		assert.Equal(t, "/tmp/test", syncer.Config.OutputDir, "Config should be set correctly")
+		assert.NotNil(t, syncer.Storage, "Storage should be set")
 		assert.NotNil(t, syncer.vendors, "Vendors map should be initialized")
 		assert.Empty(t, syncer.vendors, "Vendors map should be empty initially")
 	})
@@ -101,11 +109,7 @@ func TestNewFimirrorSyncer(t *testing.T) {
 
 func TestFimirrorSyncer_RegisterVendor(t *testing.T) {
 	t.Run("RegistersVendors", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 		mockVendor1 := &MockVendor{}
 		mockVendor2 := &MockVendor{}
 
@@ -121,11 +125,7 @@ func TestFimirrorSyncer_RegisterVendor(t *testing.T) {
 
 func TestFimirrorSyncer_GetAllVendors(t *testing.T) {
 	t.Run("ReturnsClone", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 		mockVendor := &MockVendor{}
 
 		syncer.RegisterVendor("test-vendor", mockVendor)
@@ -144,12 +144,7 @@ func TestFimirrorSyncer_GetAllVendors(t *testing.T) {
 
 func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	t.Run("SuccessfulProcessing", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 
 		// Create mock firmware entry with minimal AppStream component
 		mockEntry := &MockFirmwareEntry{
@@ -183,12 +178,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	})
 
 	t.Run("FetchCatalogError", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 
 		mockVendor := &MockVendor{
 			fetchErr: errors.New("catalog fetch failed"),
@@ -201,12 +191,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	})
 
 	t.Run("RetrieveFirmwareError", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 
 		mockEntry := &MockFirmwareEntry{
 			filename: "test-firmware.bin",
@@ -226,12 +211,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	})
 
 	t.Run("ToAppstreamError", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 
 		mockEntry := &MockFirmwareEntry{
 			filename:     "test-firmware.bin",
@@ -252,12 +232,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	})
 
 	t.Run("EmptyCatalog", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 
 		mockVendor := &MockVendor{
 			catalog: &MockCatalog{
@@ -272,12 +247,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	})
 
 	t.Run("MultipleFirmwareEntries", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, _ := createTestSyncer(t)
 
 		mockEntry1 := &MockFirmwareEntry{
 			filename: "firmware1.bin",
@@ -313,12 +283,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 	})
 
 	t.Run("TempDirectoryCreated", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, tmpDir := createTestSyncer(t)
 
 		mockEntry := &MockFirmwareEntry{
 			filename: "test-firmware.bin",
@@ -345,13 +310,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 func TestFimirrorSyncer_BuildPackage(t *testing.T) {
 	t.Run("CreatesMetainfoXML", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		outputDir := t.TempDir()
-
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: outputDir,
-			CacheDir:  filepath.Join(tmpDir, "cache"),
-		})
+		syncer, tmpDir := createTestSyncer(t)
 
 		component := &lvfs.Component{
 			Type:            "firmware",
@@ -388,9 +347,12 @@ func TestFimirrorSyncer_BuildPackage(t *testing.T) {
 func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
 	t.Run("LoadsExistingMetadata", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		storage, err := NewLocalStorage(tmpDir)
+		require.NoError(t, err)
+
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+			CacheDir: filepath.Join(tmpDir, "cache"),
+		}, storage)
 
 		// Create test metadata
 		testComponents := &lvfs.Components{
@@ -469,10 +431,7 @@ func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
 	})
 
 	t.Run("HandlesNonExistentMetadata", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+		syncer, _ := createTestSyncer(t)
 
 		// No metadata file exists
 		err := syncer.LoadMetadata()
@@ -483,13 +442,15 @@ func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
 
 	t.Run("HandlesCorruptedMetadata", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		storage, err := NewLocalStorage(tmpDir)
+		require.NoError(t, err)
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+			CacheDir: filepath.Join(tmpDir, "cache"),
+		}, storage)
 
 		// Create corrupted metadata file
 		metadataPath := filepath.Join(tmpDir, "metadata.xml.zst")
-		err := os.WriteFile(metadataPath, []byte("not valid zstd"), 0644)
+		err = os.WriteFile(metadataPath, []byte("not valid zstd"), 0644)
 		require.NoError(t, err)
 
 		// Load should fail
@@ -503,9 +464,11 @@ func TestFimirrorSyncer_LoadMetadata(t *testing.T) {
 func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 	t.Run("SavesNewComponents", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		storage, err := NewLocalStorage(tmpDir)
+		require.NoError(t, err)
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+			CacheDir: filepath.Join(tmpDir, "cache"),
+		}, storage)
 
 		// Add new components
 		syncer.newComponents = []lvfs.Component{
@@ -530,7 +493,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err := syncer.SaveMetadata()
+		err = syncer.SaveMetadata()
 		require.NoError(t, err, "Should save metadata successfully")
 
 		// Verify compressed file exists
@@ -562,9 +525,11 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 
 	t.Run("MergesExistingAndNewComponents", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		storage, err := NewLocalStorage(tmpDir)
+		require.NoError(t, err)
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+			CacheDir: filepath.Join(tmpDir, "cache"),
+		}, storage)
 
 		// Set existing metadata
 		syncer.existingMetadata = &lvfs.Components{
@@ -603,7 +568,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err := syncer.SaveMetadata()
+		err = syncer.SaveMetadata()
 		require.NoError(t, err)
 
 		// Read and verify merged content
@@ -641,9 +606,11 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 
 	t.Run("MergesReleasesForSameComponentID", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		storage, err := NewLocalStorage(tmpDir)
+		require.NoError(t, err)
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+			CacheDir: filepath.Join(tmpDir, "cache"),
+		}, storage)
 
 		// Set existing metadata with a component
 		syncer.existingMetadata = &lvfs.Components{
@@ -682,7 +649,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err := syncer.SaveMetadata()
+		err = syncer.SaveMetadata()
 		require.NoError(t, err)
 
 		// Read and verify merged content
@@ -714,10 +681,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 	})
 
 	t.Run("SkipsWhenNoNewComponents", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+		syncer, tmpDir := createTestSyncer(t)
 
 		// No new components
 		syncer.newComponents = []lvfs.Component{}
@@ -727,15 +691,17 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		assert.NoError(t, err, "Should not error")
 
 		// Verify no metadata file was created
-		metadataZstPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		metadataZstPath := filepath.Join(tmpDir, "output", "metadata.xml.zst")
 		assert.NoFileExists(t, metadataZstPath, "Should not create metadata file")
 	})
 
 	t.Run("AddsLocationTagsToReleases", func(t *testing.T) {
 		tmpDir := t.TempDir()
+		storage, err := NewLocalStorage(tmpDir)
+		require.NoError(t, err)
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
-			OutputDir: tmpDir,
-		})
+			CacheDir: filepath.Join(tmpDir, "cache"),
+		}, storage)
 
 		// Add components without location tags
 		syncer.newComponents = []lvfs.Component{
@@ -762,7 +728,7 @@ func TestFimirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err := syncer.SaveMetadata()
+		err = syncer.SaveMetadata()
 		require.NoError(t, err)
 
 		// Read and verify
