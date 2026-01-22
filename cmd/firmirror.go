@@ -2,7 +2,6 @@ package main
 
 import (
 	"log/slog"
-	"os"
 
 	"github.com/alecthomas/kong"
 
@@ -21,8 +20,8 @@ func main() {
 
 	fmConf := firmirror.FirmirrorConfig{
 		OutputDir: firmirror.CLI.Refresh.OutDir,
+		CacheDir:  ".firmirror_cache",
 	}
-	os.MkdirAll(fmConf.OutputDir, 0o0755)
 
 	if !firmirror.CLI.HPEFlags.Enable && !firmirror.CLI.DellFlags.Enable {
 		slog.Error("No vendor enabled, exiting")

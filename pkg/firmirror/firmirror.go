@@ -17,6 +17,7 @@ import (
 
 type FirmirrorConfig struct {
 	OutputDir string
+	CacheDir  string
 }
 
 type FimirrorSyncer struct {
@@ -25,6 +26,16 @@ type FimirrorSyncer struct {
 }
 
 func NewFimirrorSyncer(config FirmirrorConfig) *FimirrorSyncer {
+	// Create cache directory if it doesn't exist
+	if err := os.MkdirAll(config.CacheDir, 0755); err != nil {
+		slog.Error("Failed to create cache directory", "dir", config.CacheDir, "error", err)
+	}
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+		slog.Error("Failed to create output directory", "dir", config.OutputDir, "error", err)
+	}
+
 	return &FimirrorSyncer{
 		Config:  config,
 		vendors: make(map[string]Vendor),
@@ -61,7 +72,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 		entryLogger := logger.With("firmware", fwName)
 		entryLogger.Info("Processing firmware")
 
-		tmpDir := path.Join(f.Config.OutputDir, fwName+".wrk")
+		tmpDir := path.Join(f.Config.CacheDir, fwName+".wrk")
 		if err := os.MkdirAll(tmpDir, 0755); err != nil {
 			entryLogger.Error("Failed to create temp directory", "error", err)
 			continue
@@ -69,6 +80,7 @@ func (f *FimirrorSyncer) ProcessVendor(vendor Vendor, vendorName string) error {
 
 		if err = vendor.RetrieveFirmware(entry, tmpDir); err != nil {
 			entryLogger.Error("Failed to retrieve firmware", "error", err)
+			os.RemoveAll(tmpDir) // Clean up on error
 			continue
 		}
 
@@ -140,9 +152,9 @@ func (f *FimirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir 
 		return err
 	}
 
-	fwupdArgs := []string{"build-cabinet", fwFile + ".cab", fwMeta, fwPath}
+	cabPath := path.Join(f.Config.OutputDir, fwFile+".cab")
+	fwupdArgs := []string{"build-cabinet", cabPath, fwMeta, fwPath}
 	cmd := exec.Command("fwupdtool", fwupdArgs...)
-	cmd.Dir = f.Config.OutputDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		slog.Error("Failed to build package", "error", err, "output", string(out))
