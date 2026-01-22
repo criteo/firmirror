@@ -98,7 +98,11 @@ func TestNewFimirrorSyncer(t *testing.T) {
 
 func TestFimirrorSyncer_RegisterVendor(t *testing.T) {
 	t.Run("RegistersVendors", func(t *testing.T) {
-		syncer := NewFimirrorSyncer(FirmirrorConfig{})
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
+		})
 		mockVendor1 := &MockVendor{}
 		mockVendor2 := &MockVendor{}
 
@@ -114,7 +118,11 @@ func TestFimirrorSyncer_RegisterVendor(t *testing.T) {
 
 func TestFimirrorSyncer_GetAllVendors(t *testing.T) {
 	t.Run("ReturnsClone", func(t *testing.T) {
-		syncer := NewFimirrorSyncer(FirmirrorConfig{})
+		tmpDir := t.TempDir()
+		syncer := NewFimirrorSyncer(FirmirrorConfig{
+			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
+		})
 		mockVendor := &MockVendor{}
 
 		syncer.RegisterVendor("test-vendor", mockVendor)
@@ -137,6 +145,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		// Create mock firmware entry with minimal AppStream component
@@ -175,6 +184,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		mockVendor := &MockVendor{
@@ -192,6 +202,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		mockEntry := &MockFirmwareEntry{
@@ -216,6 +227,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		mockEntry := &MockFirmwareEntry{
@@ -241,6 +253,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		mockVendor := &MockVendor{
@@ -260,6 +273,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		mockEntry1 := &MockFirmwareEntry{
@@ -300,6 +314,7 @@ func TestFimirrorSyncer_ProcessVendor(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: tmpDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		mockEntry := &MockFirmwareEntry{
@@ -332,6 +347,7 @@ func TestFimirrorSyncer_BuildPackage(t *testing.T) {
 
 		syncer := NewFimirrorSyncer(FirmirrorConfig{
 			OutputDir: outputDir,
+			CacheDir:  filepath.Join(tmpDir, "cache"),
 		})
 
 		component := &lvfs.Component{
