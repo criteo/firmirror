@@ -24,9 +24,15 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	fmConf := firmirror.FirmirrorConfig{
-		OutputDir: firmirror.CLI.Refresh.OutDir,
-		CacheDir:  ".firmirror_cache",
+	// Create storage backend (default to local filesystem)
+	storage, err := firmirror.NewLocalStorage(firmirror.CLI.Refresh.OutDir)
+	if err != nil {
+		slog.Error("Failed to create storage backend", "error", err)
+		return
+	}
+
+	config := firmirror.FirmirrorConfig{
+		CacheDir: ".firmirror_cache",
 	}
 
 	if !firmirror.CLI.HPEFlags.Enable && !firmirror.CLI.DellFlags.Enable {
@@ -34,7 +40,7 @@ func main() {
 		return
 	}
 
-	fm := firmirror.NewFimirrorSyncer(fmConf)
+	fm := firmirror.NewFimirrorSyncer(config, storage)
 
 	if firmirror.CLI.HPEFlags.Enable {
 		for _, gen := range firmirror.CLI.HPEFlags.Gens {
