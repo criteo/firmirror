@@ -1,0 +1,53 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+Firmirror has been configured to run as a CronJob with the following settings:
+
+  Schedule: {{ .Values.schedule }}
+
+  Enabled vendors:
+  {{- if .Values.vendors.dell.enabled }}
+  - Dell firmware
+    {{- if .Values.vendors.dell.machinesId }}
+    Machine IDs: {{ .Values.vendors.dell.machinesId }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.vendors.hpe.enabled }}
+  - HPE firmware
+    {{- if .Values.vendors.hpe.gens }}
+    Generations: {{ .Values.vendors.hpe.gens }}
+    {{- end }}
+  {{- end }}
+
+  Output directory: {{ .Values.outputDir }}
+  {{- if .Values.persistence.enabled }}
+  Persistent storage: {{ .Values.persistence.size }} ({{ .Values.persistence.accessMode }})
+  {{- else }}
+  Persistent storage: disabled (using emptyDir)
+  {{- end }}
+
+To check the status of your CronJob:
+
+  kubectl get cronjob {{ include "firmirror.fullname" . }} -n {{ .Release.Namespace }}
+
+To view recent jobs:
+
+  kubectl get jobs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+To manually trigger a job now:
+
+  kubectl create job --from=cronjob/{{ include "firmirror.fullname" . }} {{ include "firmirror.fullname" . }}-manual-$(date +%s) -n {{ .Release.Namespace }}
+
+To view logs from the latest job:
+
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} --tail=100
+
+{{- if .Values.persistence.enabled }}
+
+To access the firmware repository data:
+
+  kubectl exec -it -n {{ .Release.Namespace }} <pod-name> -- ls -lh {{ .Values.outputDir }}
+{{- end }}
+
+For more information, visit: https://github.com/criteo/firmirror

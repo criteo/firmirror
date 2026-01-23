@@ -1,0 +1,78 @@
+# Firmirror Helm Chart
+
+This Helm chart deploys Firmirror as a Kubernetes CronJob to periodically sync firmware from hardware vendor sources (Dell and HPE) and create an LVFS-compatible firmware repository.
+
+## Prerequisites
+
+- Kubernetes 1.19+
+- Helm 3.0+
+- PersistentVolume provisioner support (optional, but recommended)
+- Container image with firmirror binary and fwupdtool
+
+## Installing the Chart
+
+### Basic Installation
+
+```bash
+# Install with default configuration (no vendors enabled by default)
+helm install firmirror ./chart
+
+# Install with custom values
+helm install firmirror ./chart \
+  --set vendors.dell.enabled=true \
+  --set vendors.dell.machinesId="0C60,0C61" \
+  --set vendors.hpe.enabled=true \
+  --set vendors.hpe.gens="gen10,gen11"
+```
+
+## Configuration
+
+The following table lists the configurable parameters of the Firmirror chart and their default values.
+
+### Settings
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `schedule` | Cron schedule for the job | `"0 2 * * *"` (2 AM daily) |
+| `nameOverride` | Override the chart name | `""` |
+| `fullnameOverride` | Override the full release name | `""` |
+| `image.repository` | Container image repository | `ghcr.io/criteo/firmirror` |
+| `image.tag` | Container image tag | `""` (Chart appVersion) |
+| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `imagePullSecrets` | Image pull secrets | `[]` |
+| `vendors.dell.enabled` | Enable Dell firmware sync | `false` |
+| `vendors.dell.machinesId` | Comma-separated Dell machine System IDs | `""` |
+| `vendors.hpe.enabled` | Enable HPE firmware sync | `false` |
+| `vendors.hpe.gens` | Comma-separated HPE generations (gen10,gen11,gen12) | `""` |
+| `outputDir` | Output directory inside container | `/data/firmirror` |
+| `persistence.enabled` | Enable persistent storage | `false` |
+| `persistence.existingClaim` | Use existing PVC | `""` |
+| `persistence.storageClass` | Storage class name | `""` (default class) |
+| `persistence.accessMode` | PVC access mode | `ReadWriteOnce` |
+| `persistence.size` | PVC size | `50Gi` |
+| `cronjob.successfulJobsHistoryLimit` | Number of successful jobs to keep | `3` |
+| `cronjob.failedJobsHistoryLimit` | Number of failed jobs to keep | `3` |
+| `cronjob.restartPolicy` | Pod restart policy | `OnFailure` |
+| `cronjob.backoffLimit` | Number of retries before marking job as failed | `2` |
+| `cronjob.activeDeadlineSeconds` | Maximum job runtime in seconds | `7200` (2 hours) |
+| `cronjob.ttlSecondsAfterFinished` | Time to keep finished jobs | `86400` (24 hours) |
+| `resources.limits.cpu` | CPU limit | `2000m` |
+| `resources.limits.memory` | Memory limit | `4Gi` |
+| `resources.requests.cpu` | CPU request | `500m` |
+| `resources.requests.memory` | Memory request | `1Gi` |
+| `podSecurityContext.fsGroup` | Pod fsGroup | `1000` |
+| `podSecurityContext.runAsUser` | Pod user ID | `1000` |
+| `podSecurityContext.runAsNonRoot` | Run as non-root | `true` |
+| `securityContext.allowPrivilegeEscalation` | Allow privilege escalation | `false` |
+| `securityContext.capabilities.drop` | Dropped capabilities | `["ALL"]` |
+| `securityContext.readOnlyRootFilesystem` | Read-only root filesystem | `false` |
+| `securityContext.runAsNonRoot` | Run as non-root | `true` |
+| `securityContext.runAsUser` | Container user ID | `1000` |
+| `env` | Additional environment variables | `[]` |
+| `serviceAccount.create` | Create service account | `false` |
+| `serviceAccount.annotations` | Service account annotations | `{}` |
+| `serviceAccount.name` | Service account name | `""` |
+
+## License
+
+See the main project repository for license information.

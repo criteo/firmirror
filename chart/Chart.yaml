@@ -1,0 +1,11 @@
+apiVersion: v2
+name: firmirror
+description: A Helm chart for Firmirror - LVFS-compatible firmware repository sync
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+keywords:
+- lvfs
+- fwupd
+maintainers:
+- name: Criteo

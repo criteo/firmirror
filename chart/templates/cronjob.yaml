@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "firmirror.fullname" . }}
+  labels:
+    {{- include "firmirror.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  successfulJobsHistoryLimit: {{ .Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob.failedJobsHistoryLimit }}
+  concurrencyPolicy: Forbid # could cause metadata corruption
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "firmirror.selectorLabels" . | nindent 8 }}
+    spec:
+      backoffLimit: {{ .Values.cronjob.backoffLimit }}
+      {{- if .Values.cronjob.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ .Values.cronjob.activeDeadlineSeconds }}
+      {{- end }}
+      {{- if .Values.cronjob.ttlSecondsAfterFinished }}
+      ttlSecondsAfterFinished: {{ .Values.cronjob.ttlSecondsAfterFinished }}
+      {{- end }}
+      template:
+        metadata:
+          labels:
+            {{- include "firmirror.selectorLabels" . | nindent 12 }}
+            {{- with .Values.podLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "firmirror.serviceAccountName" . }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          restartPolicy: {{ .Values.cronjob.restartPolicy }}
+          containers:
+          - name: firmirror
+            securityContext:
+              {{- toYaml .Values.securityContext | nindent 14 }}
+            image: "{{ .Values.image.repository }}:{{ include "firmirror.imageTag" . }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command: ["/bin/firmirror"]
+            args:
+              {{- include "firmirror.args" . | nindent 14 }}
+            {{- with .Values.env }}
+            env:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+            volumeMounts:
+            - name: data
+              mountPath: {{ .Values.outputDir }}
+          volumes:
+          - name: data
+            {{- if .Values.persistence.enabled }}
+            persistentVolumeClaim:
+              claimName: {{ .Values.persistence.existingClaim | default (include "firmirror.fullname" .) }}
+            {{- else }}
+            emptyDir: {}
+            {{- end }}

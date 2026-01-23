@@ -1,0 +1,87 @@
+# CronJob schedule (runs daily at 2 AM by default)
+schedule: "0 2 * * *"
+
+# Container image configuration
+image:
+  repository: ghcr.io/criteo/firmirror
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to the chart appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+vendors:
+  # Dell firmware configuration
+  dell:
+    enabled: false
+    # Comma-separated list of Dell machine System IDs (4-character codes)
+    # Example: "0C60,0C61,0A2C"
+    machinesId: ""
+
+  # HPE firmware configuration
+  hpe:
+    enabled: false
+    # Comma-separated list of HPE generations
+    # Valid values: gen10, gen11, gen12
+    # Example: "gen10,gen11"
+    gens: ""
+
+# Output directory inside the container
+outputDir: /data/firmirror
+
+# Persistent storage configuration
+persistence:
+  enabled: false
+  existingClaim: ""  # Use an existing PVC
+  storageClass: ""  # Use default storage class
+  accessMode: ReadWriteOnce
+  size: 50Gi
+
+# Service account configuration
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+
+# Pod-level security context
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsNonRoot: true
+
+# Container-level security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false  # fwupdtool may need write access to temp dirs
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# CronJob specific settings
+cronjob:
+  # Number of successful/failed jobs to keep in history
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Restart policy for the job pods
+  restartPolicy: OnFailure
+  # Job backoff limit
+  backoffLimit: 2
+  # Active deadline in seconds (max runtime)
+  activeDeadlineSeconds: 7200  # 2 hours
+  # Time to live after finished
+  ttlSecondsAfterFinished: 86400  # 24 hours
+
+# Additional environment variables
+env: []
