@@ -328,7 +328,7 @@ func TestFirmirrorSyncer_BuildPackage(t *testing.T) {
 		require.NoError(t, err, "Should create test firmware file")
 
 		// Note: This will fail without fwupdtool, but we can test XML creation
-		syncer.buildPackage(component, firmwareFilename, tmpDir)
+		syncer.buildPackage(context.TODO(), component, firmwareFilename, tmpDir)
 
 		// Verify metainfo XML was created
 		metainfoPath := filepath.Join(tmpDir, "firmware.metainfo.xml")
@@ -415,7 +415,7 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		file.Close()
 
 		// Load metadata
-		err = syncer.LoadMetadata()
+		err = syncer.LoadMetadata(context.TODO())
 		require.NoError(t, err, "Should load metadata successfully")
 
 		// Verify loaded metadata
@@ -434,7 +434,7 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		syncer, _ := createTestSyncer(t)
 
 		// No metadata file exists
-		err := syncer.LoadMetadata()
+		err := syncer.LoadMetadata(context.TODO())
 		assert.NoError(t, err, "Should not error when metadata doesn't exist")
 		assert.Nil(t, syncer.existingMetadata, "Existing metadata should be nil")
 		assert.Empty(t, syncer.existingIndex, "Index should be empty")
@@ -454,7 +454,7 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		require.NoError(t, err)
 
 		// Load should fail
-		err = syncer.LoadMetadata()
+		err = syncer.LoadMetadata(context.TODO())
 		assert.Error(t, err, "Should error with corrupted metadata")
 		// zstd error message may vary but should indicate invalid input
 		assert.Contains(t, err.Error(), "failed to", "Error should indicate failure")
@@ -493,7 +493,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err = syncer.SaveMetadata()
+		err = syncer.SaveMetadata(context.TODO())
 		require.NoError(t, err, "Should save metadata successfully")
 
 		// Verify compressed file exists
@@ -568,7 +568,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err = syncer.SaveMetadata()
+		err = syncer.SaveMetadata(context.TODO())
 		require.NoError(t, err)
 
 		// Read and verify merged content
@@ -649,7 +649,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err = syncer.SaveMetadata()
+		err = syncer.SaveMetadata(context.TODO())
 		require.NoError(t, err)
 
 		// Read and verify merged content
@@ -687,7 +687,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		syncer.newComponents = []lvfs.Component{}
 
 		// Save should skip
-		err := syncer.SaveMetadata()
+		err := syncer.SaveMetadata(context.TODO())
 		assert.NoError(t, err, "Should not error")
 
 		// Verify no metadata file was created
@@ -728,7 +728,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		}
 
 		// Save metadata
-		err = syncer.SaveMetadata()
+		err = syncer.SaveMetadata(context.TODO())
 		require.NoError(t, err)
 
 		// Read and verify
