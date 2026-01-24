@@ -24,9 +24,18 @@ type HPEFlags struct {
 	Gens   []string `help:"List of generations to fetch firmware for." default:"gen10,gen11,gen12" enum:"gen10,gen11,gen12"`
 }
 
+type S3 struct {
+	Enable   bool   `help:"Use S3 storage backend instead of local filesystem. Requires AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables" default:"false"`
+	Bucket   string `help:"S3 bucket name for storing firmware files"`
+	Prefix   string `help:"Optional prefix for all S3 keys" default:""`
+	Region   string `help:"AWS region" default:"us-east-1"`
+	Endpoint string `help:"Custom S3 endpoint URL (for S3-compatible services like MinIO)" default:""`
+}
+
 var args struct {
 	DellFlags `embed:"" prefix:"dell." group:"Dell" help:"Dell firmware fetching."`
 	HPEFlags  `embed:"" prefix:"hpe." group:"HPE" help:"HPE firmware fetching."`
+	S3        `embed:"" prefix:"s3." group:"S3 Storage" help:"S3 storage backend configuration."`
 	OutputDir string `help:"Output directory for the LVFS-compatible firmware repository (ignored when using S3)" type:"path"`
 	Refresh   struct {
 	} `cmd:"" help:"Refresh all the firmware from the repositories. Note: this will not replace the already-existing firmware, even if the vendor pushed an updated version. You will need to delete the firmware manually."`
@@ -40,18 +49,31 @@ func main() {
 		panic(cli.Command())
 	}
 
+	// Create storage backend
+	var storage firmirror.Storage
+	var err error
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	if args.OutputDir == "" {
-		slog.Error("Output directory is required when using local storage")
-		return
-	}
+	if args.S3.Enable {
+		storage, err = firmirror.NewS3Storage(context.Background(), args.S3.Bucket, args.S3.Prefix, args.S3.Region, args.S3.Endpoint)
+		if err != nil {
+			slog.Error("Failed to create S3 storage backend", "error", err)
+			return
+		}
+		slog.Info("Using S3 storage backend", "bucket", args.S3.Bucket, "prefix", args.S3.Prefix)
+	} else {
+		if args.OutputDir == "" {
+			slog.Error("Output directory is required when using local storage")
+			return
+		}
 
-	// Create storage backend (default to local filesystem)
-	storage, err := firmirror.NewLocalStorage(args.OutputDir)
-	if err != nil {
-		slog.Error("Failed to create storage backend", "error", err)
-		return
+		storage, err = firmirror.NewLocalStorage(args.OutputDir)
+		if err != nil {
+			slog.Error("Failed to create local storage backend", "error", err)
+			return
+		}
+		slog.Info("Using local filesystem storage", "path", args.OutputDir)
 	}
 
 	config := firmirror.FirmirrorConfig{
@@ -80,7 +102,7 @@ func main() {
 
 	defer func() {
 		slog.Info("Saving repository metadata")
-		if err := fm.SaveMetadata(); err != nil {
+		if err := fm.SaveMetadata(context.Background()); err != nil {
 			slog.Error("Failed to save metadata", "error", err)
 		}
 
@@ -88,7 +110,7 @@ func main() {
 	}()
 
 	// Load existing metadata to avoid reprocessing
-	if err := fm.LoadMetadata(); err != nil {
+	if err := fm.LoadMetadata(ctx); err != nil {
 		slog.Error("Failed to load existing metadata", "error", err)
 	}
 

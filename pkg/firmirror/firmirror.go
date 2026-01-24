@@ -56,7 +56,7 @@ func (f *FirmirrorSyncer) GetAllVendors() map[string]Vendor {
 	return maps.Clone(f.vendors)
 }
 
-// processVendor processes firmware for a given vendor using the interface
+// ProcessVendor processes firmware for a given vendor using the interface
 func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vendorName string) error {
 	logger := slog.With("vendor", vendorName)
 	logger.Info("Fetching catalog")
@@ -121,7 +121,7 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 		}
 
 		// Build package
-		if err = f.buildPackage(appstream, fwName, tmpDir); err != nil {
+		if err = f.buildPackage(ctx, appstream, fwName, tmpDir); err != nil {
 			entryLogger.Error("Failed to build package", "error", err)
 			continue
 		}
@@ -138,7 +138,7 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 	return nil
 }
 
-func (f *FirmirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir string) error {
+func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Component, fwFile, tmpDir string) error {
 	fwPath := filepath.Join(tmpDir, fwFile)
 
 	// Add checksums to all releases
@@ -193,7 +193,7 @@ func (f *FirmirrorSyncer) buildPackage(appstream *lvfs.Component, fwFile, tmpDir
 	}
 	defer cabFile.Close()
 
-	if err := f.Storage.Write(cabName, cabFile); err != nil {
+	if err := f.Storage.Write(ctx, cabName, cabFile); err != nil {
 		return fmt.Errorf("failed to write CAB to storage: %w", err)
 	}
 
@@ -222,11 +222,11 @@ func calculateChecksums(filepath string) (sha1Hash, sha256Hash string, err error
 }
 
 // LoadMetadata loads existing metadata.xml.zst and builds an index of existing firmware
-func (f *FirmirrorSyncer) LoadMetadata() error {
+func (f *FirmirrorSyncer) LoadMetadata(ctx context.Context) error {
 	metadataKey := "metadata.xml.zst"
 
 	// Check if metadata file exists
-	exists, err := f.Storage.Exists(metadataKey)
+	exists, err := f.Storage.Exists(ctx, metadataKey)
 	if err != nil {
 		return fmt.Errorf("failed to check metadata existence: %w", err)
 	}
@@ -236,7 +236,7 @@ func (f *FirmirrorSyncer) LoadMetadata() error {
 	}
 
 	// Read metadata from storage
-	reader, err := f.Storage.Read(metadataKey)
+	reader, err := f.Storage.Read(ctx, metadataKey)
 	if err != nil {
 		return fmt.Errorf("failed to read metadata file: %w", err)
 	}
@@ -280,7 +280,8 @@ func (f *FirmirrorSyncer) LoadMetadata() error {
 }
 
 // SaveMetadata saves the combined metadata (existing + accumulated) to metadata.xml.zst
-func (f *FirmirrorSyncer) SaveMetadata() error {
+func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
+	ctx = context.WithoutCancel(ctx)
 	logger := slog.With("component", "metadata-save")
 
 	if len(f.newComponents) == 0 {
@@ -355,7 +356,7 @@ func (f *FirmirrorSyncer) SaveMetadata() error {
 	}
 	defer compressedFile.Close()
 
-	if err := f.Storage.Write("metadata.xml.zst", compressedFile); err != nil {
+	if err := f.Storage.Write(ctx, "metadata.xml.zst", compressedFile); err != nil {
 		return fmt.Errorf("failed to write metadata to storage: %w", err)
 	}
 

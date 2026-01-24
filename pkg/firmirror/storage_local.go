@@ -1,6 +1,7 @@
 package firmirror
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -22,7 +23,7 @@ func NewLocalStorage(basePath string) (*LocalStorage, error) {
 }
 
 // Write stores data with the given key to the filesystem
-func (s *LocalStorage) Write(key string, data io.Reader) error {
+func (s *LocalStorage) Write(ctx context.Context, key string, data io.Reader) error {
 	fullPath := filepath.Join(s.basePath, key)
 
 	file, err := os.Create(fullPath)
@@ -39,7 +40,7 @@ func (s *LocalStorage) Write(key string, data io.Reader) error {
 }
 
 // Read retrieves data for the given key from the filesystem
-func (s *LocalStorage) Read(key string) (io.ReadCloser, error) {
+func (s *LocalStorage) Read(ctx context.Context, key string) (io.ReadCloser, error) {
 	fullPath := filepath.Join(s.basePath, key)
 	file, err := os.Open(fullPath)
 	if err != nil {
@@ -49,7 +50,7 @@ func (s *LocalStorage) Read(key string) (io.ReadCloser, error) {
 }
 
 // Exists checks if a key exists in the filesystem
-func (s *LocalStorage) Exists(key string) (bool, error) {
+func (s *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 	fullPath := filepath.Join(s.basePath, key)
 	_, err := os.Stat(fullPath)
 	if os.IsNotExist(err) {
