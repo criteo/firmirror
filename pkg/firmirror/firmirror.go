@@ -19,7 +19,9 @@ import (
 )
 
 type FirmirrorConfig struct {
-	CacheDir string // Local cache directory for temporary work
+	CacheDir    string // Local cache directory for temporary work
+	Certificate string // Path to certificate file for signing metadata (.pem or .crt)
+	PrivateKey  string // Path to private key file for signing metadata (.pem or .key)
 }
 
 type FirmirrorSyncer struct {
@@ -340,24 +342,32 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	if err := os.WriteFile(metadataPath, outBytes, 0644); err != nil {
 		return err
 	}
-	defer os.Remove(metadataPath) // Clean up temp file
+	defer os.Remove(metadataPath)
 
 	// Compress metadata
 	compressedPath := metadataPath + ".zst"
 	if err := compressMetadata(metadataPath); err != nil {
 		return err
 	}
-	defer os.Remove(compressedPath) // Clean up compressed temp file
+	defer os.Remove(compressedPath)
+
+	// Sign metadata
+	signaturePath := compressedPath + ".jcat"
+	if err := f.signMetadata(signaturePath, compressedPath); err != nil {
+		return err
+	}
+	defer os.Remove(signaturePath)
 
 	// Write compressed metadata to storage
-	compressedFile, err := os.Open(compressedPath)
-	if err != nil {
-		return fmt.Errorf("failed to open compressed metadata: %w", err)
-	}
-	defer compressedFile.Close()
-
-	if err := f.Storage.Write(ctx, "metadata.xml.zst", compressedFile); err != nil {
-		return fmt.Errorf("failed to write metadata to storage: %w", err)
+	for _, filePath := range []string{compressedPath, signaturePath} {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to open file: %w", err)
+		}
+		defer file.Close()
+		if err := f.Storage.Write(ctx, filepath.Base(filePath), file); err != nil {
+			return fmt.Errorf("failed to write file to storage: %w", err)
+		}
 	}
 
 	logger.Info("Metadata saved successfully",
@@ -367,14 +377,14 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	return nil
 }
 
-func compressMetadata(filepath string) error {
-	inputFile, err := os.Open(filepath)
+func compressMetadata(filePath string) error {
+	inputFile, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 	defer inputFile.Close()
 
-	outputFile, err := os.Create(filepath + ".zst")
+	outputFile, err := os.Create(filePath + ".zst")
 	if err != nil {
 		return err
 	}
@@ -389,6 +399,45 @@ func compressMetadata(filepath string) error {
 	_, err = io.Copy(zstWriter, inputFile)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// signMetadata creates a .jcat signature file for the given file using jcat-tool
+// The jcat file contains checksums (SHA256, SHA512) and optionally a GPG signature
+func (f *FirmirrorSyncer) signMetadata(sigPath, filePath string) error {
+	jcatTool := func(args []string, wd string) error {
+		slog.Debug("Running jcat-tool", "args", args)
+		cmd := exec.Command("jcat-tool", args...)
+		cmd.Dir = wd
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			slog.Error("Failed to run jcat-tool", "args", args, "error", err, "output", string(output))
+			return fmt.Errorf("jcat-tool failed: %w\nOutput: %s", err, output)
+		}
+		return nil
+	}
+
+	wd := filepath.Dir(filePath)
+	file := filepath.Base(filePath)
+	sig := filepath.Base(sigPath)
+
+	// Create JCAT file with checksum
+	if err := jcatTool([]string{"self-sign", sig, file, "--kind", "sha256"}, wd); err != nil {
+		return fmt.Errorf("failed to create JCAT file with checksums: %w", err)
+	}
+
+	// Add signature to JCAT file using certificate and private key
+	// with GPG:
+	//   gpg --detach-sign --sign --armor firmware.xml.zst
+	//   jcat-tool import firmware.xml.zst.jcat firmware.xml.zst firmware.xml.zst.asc
+	if f.Config.Certificate != "" && f.Config.PrivateKey != "" {
+		if err := jcatTool([]string{"sign", sig, file, f.Config.Certificate, f.Config.PrivateKey}, wd); err != nil {
+			return fmt.Errorf("failed to add signature to JCAT file: %w", err)
+		}
+	} else {
+		slog.Warn("Skipping metadata signing: certificate or private key not provided")
 	}
 
 	return nil

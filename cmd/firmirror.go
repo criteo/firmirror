@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -32,10 +33,16 @@ type S3 struct {
 	Endpoint string `help:"Custom S3 endpoint URL (for S3-compatible services like MinIO)" default:""`
 }
 
+type Signature struct {
+	Certificate string `help:"Path to certificate file for signing metadata (.pem or .crt)" type:"path"`
+	PrivateKey  string `help:"Path to private key file for signing metadata (.pem or .key)" type:"path"`
+}
+
 var args struct {
 	DellFlags `embed:"" prefix:"dell." group:"Dell" help:"Dell firmware fetching."`
 	HPEFlags  `embed:"" prefix:"hpe." group:"HPE" help:"HPE firmware fetching."`
 	S3        `embed:"" prefix:"s3." group:"S3 Storage" help:"S3 storage backend configuration."`
+	Signature `embed:"" prefix:"sign." group:"Signature" help:"Metadata signing configuration."`
 	OutputDir string `help:"Output directory for the LVFS-compatible firmware repository (ignored when using S3)" type:"path"`
 	Refresh   struct {
 	} `cmd:"" help:"Refresh all the firmware from the repositories. Note: this will not replace the already-existing firmware, even if the vendor pushed an updated version. You will need to delete the firmware manually."`
@@ -47,6 +54,14 @@ func main() {
 	case "refresh":
 	default:
 		panic(cli.Command())
+	}
+
+	// Check if bin tools are available
+	for _, bin := range []string{"fwupdtool", "jcat-tool"} {
+		if _, err := exec.LookPath(bin); err != nil {
+			slog.Error(bin + " is required but not found in PATH, aborting")
+			return
+		}
 	}
 
 	// Create storage backend
@@ -77,7 +92,9 @@ func main() {
 	}
 
 	config := firmirror.FirmirrorConfig{
-		CacheDir: ".firmirror_cache",
+		CacheDir:    ".firmirror_cache",
+		Certificate: args.Signature.Certificate,
+		PrivateKey:  args.Signature.PrivateKey,
 	}
 
 	if !args.HPEFlags.Enable && !args.DellFlags.Enable {

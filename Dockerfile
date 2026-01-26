@@ -8,7 +8,7 @@ RUN CGO_ENABLED=0 go build -ldflags '-s -w -extldflags "-static"' -o firmirror .
 FROM debian:stable-slim
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates fwupd libjcat-dev \
+ && apt-get install -y --no-install-recommends ca-certificates fwupd jcat \
  && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -u 1000 -s /bin/bash firmirror \

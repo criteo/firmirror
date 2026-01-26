@@ -20,7 +20,9 @@ func createTestSyncer(t *testing.T) (*FirmirrorSyncer, string) {
 	storage, err := NewLocalStorage(filepath.Join(tmpDir, "output"))
 	require.NoError(t, err)
 	config := FirmirrorConfig{
-		CacheDir: filepath.Join(tmpDir, "cache"),
+		CacheDir:    filepath.Join(tmpDir, "cache"),
+		Certificate: "", // No certificate for tests
+		PrivateKey:  "", // No private key for tests
 	}
 
 	return NewFirmirrorSyncer(config, storage), tmpDir
@@ -351,7 +353,9 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		require.NoError(t, err)
 
 		syncer := NewFirmirrorSyncer(FirmirrorConfig{
-			CacheDir: filepath.Join(tmpDir, "cache"),
+			CacheDir:    filepath.Join(tmpDir, "cache"),
+			Certificate: "",
+			PrivateKey:  "",
 		}, storage)
 
 		// Create test metadata
@@ -445,7 +449,9 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
 		syncer := NewFirmirrorSyncer(FirmirrorConfig{
-			CacheDir: filepath.Join(tmpDir, "cache"),
+			CacheDir:    filepath.Join(tmpDir, "cache"),
+			Certificate: "",
+			PrivateKey:  "",
 		}, storage)
 
 		// Create corrupted metadata file
@@ -467,7 +473,9 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
 		syncer := NewFirmirrorSyncer(FirmirrorConfig{
-			CacheDir: filepath.Join(tmpDir, "cache"),
+			CacheDir:    filepath.Join(tmpDir, "cache"),
+			Certificate: "",
+			PrivateKey:  "",
 		}, storage)
 
 		// Add new components
@@ -528,7 +536,9 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
 		syncer := NewFirmirrorSyncer(FirmirrorConfig{
-			CacheDir: filepath.Join(tmpDir, "cache"),
+			CacheDir:    filepath.Join(tmpDir, "cache"),
+			Certificate: "",
+			PrivateKey:  "",
 		}, storage)
 
 		// Set existing metadata
@@ -609,7 +619,9 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
 		syncer := NewFirmirrorSyncer(FirmirrorConfig{
-			CacheDir: filepath.Join(tmpDir, "cache"),
+			CacheDir:    filepath.Join(tmpDir, "cache"),
+			Certificate: "",
+			PrivateKey:  "",
 		}, storage)
 
 		// Set existing metadata with a component
@@ -700,7 +712,9 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
 		syncer := NewFirmirrorSyncer(FirmirrorConfig{
-			CacheDir: filepath.Join(tmpDir, "cache"),
+			CacheDir:    filepath.Join(tmpDir, "cache"),
+			Certificate: "",
+			PrivateKey:  "",
 		}, storage)
 
 		// Add components without location tags

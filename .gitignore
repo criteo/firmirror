@@ -1,6 +1,7 @@
 # Ignore firmware files
 *.fwpkg
 *.cab
+*.pem
 
 # IDE files
 .vscode
