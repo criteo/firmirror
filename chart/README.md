@@ -6,7 +6,9 @@ This Helm chart deploys Firmirror as a Kubernetes CronJob to periodically sync f
 
 - Kubernetes 1.19+
 - Helm 3.0+
-- PersistentVolume provisioner support (optional, but recommended)
+- PersistentVolume provisioner support (optional, for local storage)
+- S3 bucket access (optional, for S3 storage)
+- External Secrets Operator (optional, for secure credential management)
 - Container image with firmirror binary and fwupdtool
 
 ## Installing the Chart
@@ -44,8 +46,18 @@ The following table lists the configurable parameters of the Firmirror chart and
 | `vendors.dell.machinesId` | Comma-separated Dell machine System IDs | `""` |
 | `vendors.hpe.enabled` | Enable HPE firmware sync | `false` |
 | `vendors.hpe.gens` | Comma-separated HPE generations (gen10,gen11,gen12) | `""` |
-| `outputDir` | Output directory inside container | `/data/firmirror` |
-| `persistence.enabled` | Enable persistent storage | `false` |
+| `storage.outputDir` | Output directory inside container (for local storage) | `/data/firmirror` |
+| `storage.s3.enabled` | Enable S3 storage backend | `false` |
+| `storage.s3.bucket` | S3 bucket name | `""` |
+| `storage.s3.prefix` | S3 prefix/path within bucket | `""` |
+| `storage.s3.region` | AWS region | `""` |
+| `storage.s3.endpoint` | Custom S3 endpoint (for MinIO, etc.) | `""` |
+| `storage.s3.secretName` | Secret containing AWS credentials | `""` |
+| `externalSecret.create` | Create an ExternalSecret resource | `false` |
+| `externalSecret.secretStoreRef` | Reference to the SecretStore | `""` |
+| `externalSecret.targetSecret` | Name of the secret to create | `""` |
+| `externalSecret.data` | Data mapping configuration | `[]` |
+| `persistence.enabled` | Enable persistent storage (only for local storage) | `false` |
 | `persistence.existingClaim` | Use existing PVC | `""` |
 | `persistence.storageClass` | Storage class name | `""` (default class) |
 | `persistence.accessMode` | PVC access mode | `ReadWriteOnce` |
