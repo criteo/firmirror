@@ -71,7 +71,23 @@ Build the firmirror command arguments
 */}}
 {{- define "firmirror.args" -}}
 - "refresh"
-- {{ .Values.outputDir | quote }}
+{{- if .Values.storage.s3.enabled }}
+- "--s3.enable"
+{{- if .Values.storage.s3.bucket }}
+- {{ printf "--s3.bucket=%s" .Values.storage.s3.bucket | quote }}
+{{- end }}
+{{- if .Values.storage.s3.prefix }}
+- {{ printf "--s3.prefix=%s" .Values.storage.s3.prefix | quote }}
+{{- end }}
+{{- if .Values.storage.s3.region }}
+- {{ printf "--s3.region=%s" .Values.storage.s3.region | quote }}
+{{- end }}
+{{- if .Values.storage.s3.endpoint }}
+- {{ printf "--s3.endpoint=%s" .Values.storage.s3.endpoint | quote }}
+{{- end }}
+{{- else }}
+- {{ printf "--output-dir=%s" .Values.storage.outputDir | quote }}
+{{- end }}
 {{- if .Values.vendors.dell.enabled }}
 - "--dell.enable"
 {{- if .Values.vendors.dell.machinesId }}
