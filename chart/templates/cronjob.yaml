@@ -50,15 +50,27 @@ spec:
             command: ["/bin/firmirror"]
             args:
               {{- include "firmirror.args" . | nindent 14 }}
-            {{- with .Values.env }}
+            {{- if and .Values.storage.s3.enabled .Values.storage.s3.secretName }}
             env:
-              {{- toYaml . | nindent 14 }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storage.s3.secretName }}
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storage.s3.secretName }}
+                  key: AWS_SECRET_ACCESS_KEY
             {{- end }}
             resources:
               {{- toYaml .Values.resources | nindent 14 }}
+            {{- if not .Values.storage.s3.enabled }}
             volumeMounts:
             - name: data
-              mountPath: {{ .Values.outputDir }}
+              mountPath: {{ .Values.storage.outputDir }}
+            {{- end }}
+          {{- if not .Values.storage.s3.enabled }}
           volumes:
           - name: data
             {{- if .Values.persistence.enabled }}
@@ -67,3 +79,4 @@ spec:
             {{- else }}
             emptyDir: {}
             {{- end }}
+          {{- end }}

@@ -27,8 +27,27 @@ vendors:
     # Example: "gen10,gen11"
     gens: ""
 
-# Output directory inside the container
-outputDir: /data/firmirror
+storage:
+  # Output directory inside the container
+  outputDir: /data/firmirror
+  s3:
+    enabled: false
+    bucket: ""
+    prefix: ""
+    region: ""
+    endpoint: ""
+    # secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY keys
+    secretName: ""
+
+externalSecret:
+  create: false
+  secretStoreRef: ""
+  targetSecret: ""
+  data: []
+  # - secretKey: AWS_ACCESS_KEY_ID
+  #   remoteRef:
+  #     key: "/secret/aws-creds"
+  #     property: AWS_ACCESS_KEY_ID
 
 # Persistent storage configuration
 persistence:
@@ -82,6 +101,3 @@ cronjob:
   activeDeadlineSeconds: 7200  # 2 hours
   # Time to live after finished
   ttlSecondsAfterFinished: 86400  # 24 hours
-
-# Additional environment variables
-env: []
