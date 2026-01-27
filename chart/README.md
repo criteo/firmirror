@@ -9,7 +9,7 @@ This Helm chart deploys Firmirror as a Kubernetes CronJob to periodically sync f
 - PersistentVolume provisioner support (optional, for local storage)
 - S3 bucket access (optional, for S3 storage)
 - External Secrets Operator (optional, for secure credential management)
-- Container image with firmirror binary and fwupdtool
+- Container image with firmirror binary, fwupdtool and jcat-tool
 
 ## Installing the Chart
 
@@ -30,8 +30,6 @@ helm install firmirror ./chart \
 ## Configuration
 
 The following table lists the configurable parameters of the Firmirror chart and their default values.
-
-### Settings
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -57,6 +55,10 @@ The following table lists the configurable parameters of the Firmirror chart and
 | `externalSecret.secretStoreRef` | Reference to the SecretStore | `""` |
 | `externalSecret.targetSecret` | Name of the secret to create | `""` |
 | `externalSecret.data` | Data mapping configuration | `[]` |
+| `signing.enabled` | Enable metadata signing with JCAT | `false` |
+| `signing.secretName` | Name of secret containing signing certificate and key | `""` |
+| `signing.certKey` | Key name in secret for certificate file | `""` |
+| `signing.pkeyKey` | Key name in secret for private key file | `""` |
 | `persistence.enabled` | Enable persistent storage (only for local storage) | `false` |
 | `persistence.existingClaim` | Use existing PVC | `""` |
 | `persistence.storageClass` | Storage class name | `""` (default class) |
@@ -80,7 +82,6 @@ The following table lists the configurable parameters of the Firmirror chart and
 | `securityContext.readOnlyRootFilesystem` | Read-only root filesystem | `false` |
 | `securityContext.runAsNonRoot` | Run as non-root | `true` |
 | `securityContext.runAsUser` | Container user ID | `1000` |
-| `env` | Additional environment variables | `[]` |
 | `serviceAccount.create` | Create service account | `false` |
 | `serviceAccount.annotations` | Service account annotations | `{}` |
 | `serviceAccount.name` | Service account name | `""` |

@@ -39,6 +39,12 @@ storage:
     # secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY keys
     secretName: ""
 
+signing:
+  enabled: false
+  secretName: ""
+  certKey: ""
+  pkeyKey: ""
+
 externalSecret:
   create: false
   secretStoreRef: ""

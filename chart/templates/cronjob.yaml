@@ -65,13 +65,21 @@ spec:
             {{- end }}
             resources:
               {{- toYaml .Values.resources | nindent 14 }}
-            {{- if not .Values.storage.s3.enabled }}
+            {{- if or (not .Values.storage.s3.enabled) .Values.signing.enabled }}
             volumeMounts:
+            {{- if not .Values.storage.s3.enabled }}
             - name: data
               mountPath: {{ .Values.storage.outputDir }}
             {{- end }}
-          {{- if not .Values.storage.s3.enabled }}
+            {{- if .Values.signing.enabled }}
+            - name: secrets
+              mountPath: /secrets
+              readOnly: true
+            {{- end }}
+            {{- end }}
+          {{- if or (not .Values.storage.s3.enabled) .Values.signing.enabled }}
           volumes:
+          {{- if not .Values.storage.s3.enabled }}
           - name: data
             {{- if .Values.persistence.enabled }}
             persistentVolumeClaim:
@@ -79,4 +87,15 @@ spec:
             {{- else }}
             emptyDir: {}
             {{- end }}
+          {{- end }}
+          {{- if .Values.signing.enabled }}
+          - name: secrets
+            secret:
+              secretName: {{ .Values.signing.secretName }}
+              items:
+              - key: {{ .Values.signing.certKey }}
+                path: signing.cert
+              - key: {{ .Values.signing.pkeyKey }}
+                path: signing.key
+          {{- end }}
           {{- end }}

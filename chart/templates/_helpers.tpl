@@ -88,6 +88,10 @@ Build the firmirror command arguments
 {{- else }}
 - {{ printf "--output-dir=%s" .Values.storage.outputDir | quote }}
 {{- end }}
+{{- if .Values.signing.enabled }}
+- --sign.certificate=/secrets/signing.cert
+- --sign.private-key=/secrets/signing.key
+{{- end }}
 {{- if .Values.vendors.dell.enabled }}
 - "--dell.enable"
 {{- if .Values.vendors.dell.machinesId }}
