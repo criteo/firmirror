@@ -43,6 +43,7 @@ func NewS3Storage(ctx context.Context, bucket, prefix, region, endpoint string) 
 		if endpoint != "" {
 			o.BaseEndpoint = aws.String(endpoint)
 			o.UsePathStyle = true
+			o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
 		}
 	})
 
