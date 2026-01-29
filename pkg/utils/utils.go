@@ -10,12 +10,24 @@ import (
 
 const maxRetries = 3
 
+// httpClient is a shared HTTP client with timeout
+var httpClient = &http.Client{
+	Timeout: time.Minute,
+}
+
 func DownloadFile(url string) (io.ReadCloser, error) {
 	var resp *http.Response
 	var err error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		resp, err = http.Get(url)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("User-Agent", "firmirror")
+
+		resp, err = httpClient.Do(req)
 		if err != nil {
 			if attempt < maxRetries {
 				time.Sleep(time.Duration(attempt+1) * time.Second)
