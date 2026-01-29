@@ -199,6 +199,31 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Comp
 		return err
 	}
 
+	// Calculate CAB checksums for artifacts section
+	cabSha1, cabSha256, err := calculateChecksums(cabPathInCache)
+	if err != nil {
+		return fmt.Errorf("failed to calculate CAB checksums: %w", err)
+	}
+
+	// Add artifacts section to all releases
+	for i := range appstream.Releases {
+		appstream.Releases[i].Artifacts = []lvfs.Artifact{
+			{
+				Location: cabName,
+				Checksums: []lvfs.Checksum{
+					{
+						Type:  "sha1",
+						Value: cabSha1,
+					},
+					{
+						Type:  "sha256",
+						Value: cabSha256,
+					},
+				},
+			},
+		}
+	}
+
 	// Write CAB to storage backend
 	cabFile, err := os.Open(cabPathInCache)
 	if err != nil {
