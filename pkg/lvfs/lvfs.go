@@ -47,11 +47,17 @@ type Release struct {
 	Checksums       []Checksum  `xml:"checksum"`
 	Description     Description `xml:"description"`
 	Issues          []Issue     `xml:"issues>issue,omitempty"`
+	Artifacts       []Artifact  `xml:"artifacts>artifact,omitempty"`
+}
+
+type Artifact struct {
+	Location  string     `xml:"location"`
+	Checksums []Checksum `xml:"checksum"`
 }
 
 type Checksum struct {
-	Filename string `xml:"filename,attr"`
-	Target   string `xml:"target,attr"`
+	Filename string `xml:"filename,attr,omitempty"`
+	Target   string `xml:"target,attr,omitempty"`
 	Type     string `xml:"type,attr,omitempty"`
 	Value    string `xml:",chardata"`
 }
