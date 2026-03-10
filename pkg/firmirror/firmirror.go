@@ -189,8 +189,8 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Comp
 	}
 
 	// Build CAB in the temporary directory
-	cabName := fwFile + ".cab"
-	cabPathInCache := filepath.Join(tmpDir, cabName)
+	cabBaseName := fwFile + ".cab"
+	cabPathInCache := filepath.Join(tmpDir, cabBaseName)
 	fwupdArgs := []string{"build-cabinet", cabPathInCache, fwPath, fwMeta, fwSig}
 	cmd := exec.Command("fwupdtool", fwupdArgs...)
 	out, err := cmd.CombinedOutput()
@@ -205,6 +205,7 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Comp
 		return fmt.Errorf("failed to calculate CAB checksums: %w", err)
 	}
 
+	cabName := cabSha256 + "-" + fwFile + ".cab"
 	// Add artifacts section to all releases
 	for i := range appstream.Releases {
 		appstream.Releases[i].Artifacts = []lvfs.Artifact{
@@ -357,9 +358,8 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 		// Ensure each release has a location tag
 		for i := range component.Releases {
 			release := &component.Releases[i]
-			if release.Location == "" && len(release.Checksums) > 0 {
-				// FIXME: this is brittle
-				release.Location = release.Checksums[0].Filename + ".cab"
+			if release.Location == "" && len(release.Artifacts) > 0 && release.Artifacts[0].Location != "" {
+				release.Location = release.Artifacts[0].Location
 			}
 		}
 		components.Component = append(components.Component, *component)
