@@ -51,6 +51,7 @@ type Release struct {
 }
 
 type Artifact struct {
+	Type      string     `xml:"type,attr,omitempty"`
 	Location  string     `xml:"location"`
 	Checksums []Checksum `xml:"checksum"`
 }
