@@ -495,6 +495,18 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 								Value:    "abc123",
 							},
 						},
+						Artifacts: []lvfs.Artifact{
+							{
+								Type:     "binary",
+								Location: "abc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1-firmware1.bin.cab",
+								Checksums: []lvfs.Checksum{
+									{
+										Type:  "sha256",
+										Value: "abc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1",
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -527,7 +539,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		assert.Equal(t, "firmirror", components.Origin)
 
 		// Verify location tag was added
-		assert.Equal(t, "firmware1.bin.cab", components.Component[0].Releases[0].Location,
+		assert.Regexp(t, `^[a-f0-9]{64}-firmware1\.bin\.cab$`, components.Component[0].Releases[0].Location,
 			"Should have location tag set")
 	})
 
@@ -550,7 +562,8 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 					Name: "Existing Firmware",
 					Releases: []lvfs.Release{
 						{
-							Version: "1.0.0",
+							Version:  "1.0.0",
+							Location: "existing.bin.cab",
 							Checksums: []lvfs.Checksum{
 								{Filename: "existing.bin"},
 							},
@@ -571,6 +584,18 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 						Version: "2.0.0",
 						Checksums: []lvfs.Checksum{
 							{Filename: "new.bin"},
+						},
+						Artifacts: []lvfs.Artifact{
+							{
+								Type:     "binary",
+								Location: "def456def456def456def456def456def456def456def456def456def456def4-new.bin.cab",
+								Checksums: []lvfs.Checksum{
+									{
+										Type:  "sha256",
+										Value: "def456def456def456def456def456def456def456def456def456def456def4",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -607,7 +632,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 			}
 			if comp.ID == "com.new.firmware" {
 				newFound = true
-				assert.Equal(t, "new.bin.cab", comp.Releases[0].Location)
+				assert.Regexp(t, `^[a-f0-9]{64}-new\.bin\.cab$`, comp.Releases[0].Location)
 			}
 		}
 		assert.True(t, existingFound, "Should have existing component")
@@ -729,6 +754,18 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 						Checksums: []lvfs.Checksum{
 							{Filename: "firmware.bin"},
 						},
+						Artifacts: []lvfs.Artifact{
+							{
+								Type:     "binary",
+								Location: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef-firmware.bin.cab",
+								Checksums: []lvfs.Checksum{
+									{
+										Type:  "sha256",
+										Value: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+									},
+								},
+							},
+						},
 					},
 					{
 						Version:  "2.0.0",
@@ -762,7 +799,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 
 		// Verify locations
 		releases := components.Component[0].Releases
-		assert.Equal(t, "firmware.bin.cab", releases[0].Location,
+		assert.Regexp(t, `^[a-f0-9]{64}-firmware\.bin\.cab$`, releases[0].Location,
 			"Should add location based on checksum filename")
 		assert.Equal(t, "already-set.cab", releases[1].Location,
 			"Should preserve existing location")
