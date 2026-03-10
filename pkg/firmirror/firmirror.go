@@ -210,6 +210,7 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Comp
 	for i := range appstream.Releases {
 		appstream.Releases[i].Artifacts = []lvfs.Artifact{
 			{
+				Type:     "binary",
 				Location: cabName,
 				Checksums: []lvfs.Checksum{
 					{
