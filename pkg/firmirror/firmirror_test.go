@@ -79,7 +79,7 @@ func (m *MockCatalog) ListEntries() []FirmwareEntry {
 type MockFirmwareEntry struct {
 	filename     string
 	sourceURL    string
-	appstream    *lvfs.Component
+	components   []lvfs.Component
 	appstreamErr error
 }
 
@@ -91,11 +91,11 @@ func (m *MockFirmwareEntry) GetSourceURL() string {
 	return m.sourceURL
 }
 
-func (m *MockFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
+func (m *MockFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
 	if m.appstreamErr != nil {
 		return nil, m.appstreamErr
 	}
-	return m.appstream, nil
+	return m.components, nil
 }
 
 func TestNewFirmirrorSyncer(t *testing.T) {
@@ -151,16 +151,18 @@ func TestFirmirrorSyncer_ProcessVendor(t *testing.T) {
 		// Create mock firmware entry with minimal AppStream component
 		mockEntry := &MockFirmwareEntry{
 			filename: "test-firmware.bin",
-			appstream: &lvfs.Component{
-				Type:            "firmware",
-				ID:              "com.test.firmware",
-				Name:            "Test Firmware",
-				Summary:         "Test firmware summary",
-				MetadataLicense: "proprietary",
-				ProjectLicense:  "proprietary",
-				Releases: []lvfs.Release{
-					{
-						Version: "1.0.0",
+			components: []lvfs.Component{
+				{
+					Type:            "firmware",
+					ID:              "com.test.firmware",
+					Name:            "Test Firmware",
+					Summary:         "Test firmware summary",
+					MetadataLicense: "proprietary",
+					ProjectLicense:  "proprietary",
+					Releases: []lvfs.Release{
+						{
+							Version: "1.0.0",
+						},
 					},
 				},
 			},
@@ -253,21 +255,25 @@ func TestFirmirrorSyncer_ProcessVendor(t *testing.T) {
 
 		mockEntry1 := &MockFirmwareEntry{
 			filename: "firmware1.bin",
-			appstream: &lvfs.Component{
-				Type:            "firmware",
-				ID:              "com.test.firmware1",
-				Name:            "Test Firmware 1",
-				MetadataLicense: "proprietary",
+			components: []lvfs.Component{
+				{
+					Type:            "firmware",
+					ID:              "com.test.firmware1",
+					Name:            "Test Firmware 1",
+					MetadataLicense: "proprietary",
+				},
 			},
 		}
 
 		mockEntry2 := &MockFirmwareEntry{
 			filename: "firmware2.bin",
-			appstream: &lvfs.Component{
-				Type:            "firmware",
-				ID:              "com.test.firmware2",
-				Name:            "Test Firmware 2",
-				MetadataLicense: "proprietary",
+			components: []lvfs.Component{
+				{
+					Type:            "firmware",
+					ID:              "com.test.firmware2",
+					Name:            "Test Firmware 2",
+					MetadataLicense: "proprietary",
+				},
 			},
 		}
 
@@ -289,10 +295,12 @@ func TestFirmirrorSyncer_ProcessVendor(t *testing.T) {
 
 		mockEntry := &MockFirmwareEntry{
 			filename: "test-firmware.bin",
-			appstream: &lvfs.Component{
-				Type:            "firmware",
-				ID:              "com.test.firmware",
-				MetadataLicense: "proprietary",
+			components: []lvfs.Component{
+				{
+					Type:            "firmware",
+					ID:              "com.test.firmware",
+					MetadataLicense: "proprietary",
+				},
 			},
 		}
 
@@ -314,13 +322,15 @@ func TestFirmirrorSyncer_BuildPackage(t *testing.T) {
 	t.Run("CreatesMetainfoXML", func(t *testing.T) {
 		syncer, tmpDir := createTestSyncer(t)
 
-		component := &lvfs.Component{
-			Type:            "firmware",
-			ID:              "com.test.firmware",
-			Name:            "Test Firmware",
-			Summary:         "Test summary",
-			MetadataLicense: "proprietary",
-			ProjectLicense:  "proprietary",
+		components := []*lvfs.Component{
+			{
+				Type:            "firmware",
+				ID:              "com.test.firmware",
+				Name:            "Test Firmware",
+				Summary:         "Test summary",
+				MetadataLicense: "proprietary",
+				ProjectLicense:  "proprietary",
+			},
 		}
 
 		// Create a dummy firmware file
@@ -330,10 +340,10 @@ func TestFirmirrorSyncer_BuildPackage(t *testing.T) {
 		require.NoError(t, err, "Should create test firmware file")
 
 		// Note: This will fail without fwupdtool, but we can test XML creation
-		syncer.buildPackage(context.TODO(), component, firmwareFilename, tmpDir)
+		syncer.buildPackage(context.TODO(), components, firmwareFilename, tmpDir)
 
-		// Verify metainfo XML was created
-		metainfoPath := filepath.Join(tmpDir, "firmware.metainfo.xml")
+		// Verify metainfo XML was created (named 0.metainfo.xml)
+		metainfoPath := filepath.Join(tmpDir, "0.metainfo.xml")
 		assert.FileExists(t, metainfoPath, "Metainfo XML should be created")
 
 		// Verify XML content

@@ -4,7 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
-"html"
+	"html"
 	"io"
 	"os"
 	"path/filepath"
@@ -118,7 +118,7 @@ func (hfe *HPEFirmwareEntry) GetSourceURL() string {
 
 // ToAppstream implements the FirmwareEntry interface
 // HPE requires the firmware to be downloaded first, so we use the stored path
-func (hfe *HPEFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
+func (hfe *HPEFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
 	if hfe.downloadPath == "" {
 		return nil, fmt.Errorf("firmware must be retrieved first using RetrieveFirmware")
 	}
@@ -138,7 +138,7 @@ func (hfe *HPEFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
 		return nil, err
 	}
 
-	return appstream, nil
+	return []lvfs.Component{*appstream}, nil
 }
 
 // buildAppStream converts an HPE firmware payload to an AppStream component.

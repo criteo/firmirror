@@ -23,6 +23,7 @@ type FirmwareEntry interface {
 	GetFilename() string
 	// GetSourceURL returns the original download URL for this firmware
 	GetSourceURL() string
-	// ToAppstream converts this firmware entry to an AppStream component.
-	ToAppstream() (*lvfs.Component, error)
+	// ToAppstream converts this firmware entry to AppStream components.
+	// A single firmware entry may produce multiple components (e.g. one per supported device).
+	ToAppstream() ([]lvfs.Component, error)
 }
