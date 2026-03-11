@@ -165,9 +165,11 @@ func TestHPEFirmwareEntry_ToAppstream_Success(t *testing.T) {
 		downloadPath: mockFirmwarePath,
 	}
 
-	component, err := entry.ToAppstream()
+	components, err := entry.ToAppstream()
 	assert.NoError(t, err, "ToAppstream should not return an error")
-	assert.NotNil(t, component, "Component should not be nil")
+	assert.Len(t, components, 1, "Should return exactly one component")
+
+	component := components[0]
 
 	// Verify basic component properties
 	assert.Equal(t, "firmware", component.Type, "Component type should be firmware")

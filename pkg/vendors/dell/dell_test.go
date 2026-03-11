@@ -2,6 +2,7 @@ package dell
 
 import (
 	"compress/gzip"
+	"encoding/xml"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -244,79 +245,228 @@ func TestDellFirmwareEntry_GetFilename(t *testing.T) {
 }
 
 func TestDellFirmwareEntry_ToAppstream(t *testing.T) {
-	entry := &DellFirmwareEntry{
-		Filename: "test-firmware.exe",
-		DellSoftwareComponent: &DellSoftwareComponent{
-			Path:           "FOLDER01/test-firmware.exe",
-			VendorVersion:  "1.0.0",
-			DateTime:       mustParseTime("2024-01-15T10:30:00Z"),
-			RebootRequired: true,
-			Name: DellTranslatable{
-				Display: []DellTranslatableEntry{
-					{Lang: "en", Value: "Test Network Firmware"},
+	t.Run("SingleDevice", func(t *testing.T) {
+		entry := &DellFirmwareEntry{
+			Filename: "test-firmware.exe",
+			DellSoftwareComponent: &DellSoftwareComponent{
+				Path:           "FOLDER01/test-firmware.exe",
+				VendorVersion:  "1.0.0",
+				DateTime:       mustParseTime("2024-01-15T10:30:00Z"),
+				RebootRequired: true,
+				Name: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Test Network Firmware"},
+					},
 				},
-			},
-			Description: DellTranslatable{
-				Display: []DellTranslatableEntry{
-					{Lang: "en", Value: "Test firmware description"},
+				Description: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Test firmware description"},
+					},
 				},
-			},
-			ImportantInfo: DellTranslatable{
-				Display: []DellTranslatableEntry{
-					{Lang: "en", Value: "Reboot required"},
+				ImportantInfo: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Reboot required"},
+					},
 				},
-			},
-			LUCategory: DellTranslatableWithValue{
-				Value: "Network",
-			},
-			Criticality: DellCriticality{
-				Value: 1, // Medium urgency
-			},
-			SupportedSystems: []DellBrand{
-				{
-					Models: []DellModel{
-						{SystemID: "0C60"},
+				LUCategory: DellTranslatableWithValue{
+					Value: "Network",
+				},
+				Criticality: DellCriticality{
+					Value: 1, // Medium urgency
+				},
+				SupportedSystems: []DellBrand{
+					{
+						Models: []DellModel{
+							{SystemID: "0C60"},
+						},
+					},
+				},
+				SupportedDevices: []DellDevice{
+					{
+						ComponentID:      "DEV001",
+						DellTranslatable: DellTranslatable{Display: []DellTranslatableEntry{{Lang: "en", Value: "Network Device 1"}}},
 					},
 				},
 			},
-			SupportedDevices: []DellDevice{
-				{ComponentID: "DEV001"},
+		}
+
+		components, err := entry.ToAppstream()
+		assert.NoError(t, err, "ToAppstream should not return an error")
+		assert.Len(t, components, 1, "Should return exactly one component for one device")
+
+		component := components[0]
+
+		// Name should be the device name, summary should be the firmware package name
+		assert.Equal(t, "firmware", component.Type, "Component type should be firmware")
+		assert.Equal(t, "proprietary", component.MetadataLicense, "Metadata license should be proprietary")
+		assert.Equal(t, "proprietary", component.ProjectLicense, "Project license should be proprietary")
+		assert.Equal(t, "Network Device 1", component.Name, "Component name should be the device name")
+		assert.Equal(t, "Test Network Firmware", component.Summary, "Component summary should be the firmware package name")
+		assert.Equal(t, "<p>Test firmware description</p>", component.Description.Value, "Component description should match")
+
+		// Verify releases
+		assert.Len(t, component.Releases, 1, "Should have exactly one release")
+		release := component.Releases[0]
+		assert.Equal(t, "1.0.0", release.Version, "Release version should match")
+		assert.Equal(t, "medium", release.Urgency, "Release urgency should be medium for criticality 1")
+
+		// Verify categories for Network LUCategory
+		assert.Contains(t, component.Categories, "X-NetworkInterface", "Should contain X-NetworkInterface category")
+
+		// Verify custom fields for reboot required
+		customKeys := make([]string, len(component.Custom))
+		for i, custom := range component.Custom {
+			customKeys[i] = custom.Key
+		}
+		assert.Contains(t, customKeys, "LVFS::DeviceFlags", "Should contain DeviceFlags custom field")
+		assert.Contains(t, customKeys, "LVFS::UpdateMessage", "Should contain UpdateMessage custom field")
+		assert.Contains(t, customKeys, "LVFS::UpdateProtocol", "Should contain UpdateProtocol custom field")
+		assert.Contains(t, customKeys, "LVFS::DeviceIntegrity", "Should contain DeviceIntegrity custom field")
+
+		// Verify provides section - should only have GUIDs for this device
+		assert.Len(t, component.Provides, 1, "Should have exactly 1 provides entry (1 device x 1 system)")
+	})
+
+	t.Run("MultipleDevices", func(t *testing.T) {
+		entry := &DellFirmwareEntry{
+			Filename: "test-firmware.exe",
+			DellSoftwareComponent: &DellSoftwareComponent{
+				Path:           "FOLDER01/test-firmware.exe",
+				VendorVersion:  "1.0.0",
+				DateTime:       mustParseTime("2024-01-15T10:30:00Z"),
+				RebootRequired: false,
+				Name: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Multi-Device Firmware"},
+					},
+				},
+				Description: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Firmware for multiple devices"},
+					},
+				},
+				LUCategory: DellTranslatableWithValue{
+					Value: "SAS Drive",
+				},
+				Criticality: DellCriticality{
+					Value: 2, // Critical
+				},
+				SupportedSystems: []DellBrand{
+					{
+						Models: []DellModel{
+							{SystemID: "0C60"},
+							{SystemID: "0C61"},
+						},
+					},
+				},
+				SupportedDevices: []DellDevice{
+					{
+						ComponentID:      "DEV001",
+						DellTranslatable: DellTranslatable{Display: []DellTranslatableEntry{{Lang: "en", Value: "SAS Drive Model A"}}},
+					},
+					{
+						ComponentID:      "DEV002",
+						DellTranslatable: DellTranslatable{Display: []DellTranslatableEntry{{Lang: "en", Value: "SAS Drive Model B"}}},
+					},
+				},
 			},
-		},
-	}
+		}
 
-	component, err := entry.ToAppstream()
-	assert.NoError(t, err, "ToAppstream should not return an error")
-	assert.NotNil(t, component, "Component should not be nil")
+		components, err := entry.ToAppstream()
+		assert.NoError(t, err, "ToAppstream should not return an error")
+		assert.Len(t, components, 2, "Should return one component per device")
 
-	// Verify basic component properties
-	assert.Equal(t, "firmware", component.Type, "Component type should be firmware")
-	assert.Equal(t, "proprietary", component.MetadataLicense, "Metadata license should be proprietary")
-	assert.Equal(t, "proprietary", component.ProjectLicense, "Project license should be proprietary")
-	assert.Equal(t, "Test Network Firmware", component.Name, "Component name should match")
-	assert.Equal(t, "Test firmware description", component.Summary, "Component summary should match")
+		// First component - DEV001
+		assert.Equal(t, "SAS Drive Model A", components[0].Name, "First component name should be first device name")
+		assert.Equal(t, "Multi-Device Firmware", components[0].Summary, "Summary should be the firmware package name")
+		assert.Equal(t, "<p>Firmware for multiple devices</p>", components[0].Description.Value)
+		assert.Len(t, components[0].Provides, 2, "First component should have 2 provides (1 device x 2 systems)")
+		assert.Contains(t, components[0].Categories, "X-Drive", "Should contain X-Drive category")
+		assert.Equal(t, "critical", components[0].Releases[0].Urgency, "Urgency should be critical")
 
-	// Verify releases
-	assert.Len(t, component.Releases, 1, "Should have exactly one release")
-	release := component.Releases[0]
-	assert.Equal(t, "1.0.0", release.Version, "Release version should match")
-	assert.Equal(t, "medium", release.Urgency, "Release urgency should be medium for criticality 1")
+		// Second component - DEV002
+		assert.Equal(t, "SAS Drive Model B", components[1].Name, "Second component name should be second device name")
+		assert.Equal(t, "Multi-Device Firmware", components[1].Summary, "Summary should be the firmware package name")
+		assert.Len(t, components[1].Provides, 2, "Second component should have 2 provides (1 device x 2 systems)")
 
-	// Verify categories for Network LUCategory
-	assert.Contains(t, component.Categories, "X-NetworkInterface", "Should contain X-NetworkInterface category")
+		// Component IDs should differ (based on componentID)
+		assert.NotEqual(t, components[0].ID, components[1].ID, "Component IDs should be different for different devices")
+	})
 
-	// Verify custom fields for reboot required
-	customKeys := make([]string, len(component.Custom))
-	for i, custom := range component.Custom {
-		customKeys[i] = custom.Key
-	}
-	assert.Contains(t, customKeys, "LVFS::DeviceFlags", "Should contain DeviceFlags custom field")
-	assert.Contains(t, customKeys, "LVFS::UpdateMessage", "Should contain UpdateMessage custom field")
-	assert.Contains(t, customKeys, "LVFS::UpdateProtocol", "Should contain UpdateProtocol custom field")
-	assert.Contains(t, customKeys, "LVFS::DeviceIntegrity", "Should contain DeviceIntegrity custom field")
+	t.Run("DescriptionWithAmpersand", func(t *testing.T) {
+		entry := &DellFirmwareEntry{
+			Filename: "test-firmware.exe",
+			DellSoftwareComponent: &DellSoftwareComponent{
+				Path:          "FOLDER01/test-firmware.exe",
+				VendorVersion: "1.0.0",
+				DateTime:      mustParseTime("2024-01-15T10:30:00Z"),
+				Name: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Security & Management Firmware"},
+					},
+				},
+				Description: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Fixes for CVE-2024-1234 & CVE-2024-5678"},
+					},
+				},
+				LUCategory:  DellTranslatableWithValue{Value: "BIOS"},
+				Criticality:  DellCriticality{Value: 2},
+				SupportedSystems: []DellBrand{
+					{Models: []DellModel{{SystemID: "0C60"}}},
+				},
+				SupportedDevices: []DellDevice{
+					{
+						ComponentID:      "BIOS001",
+						DellTranslatable: DellTranslatable{Display: []DellTranslatableEntry{{Lang: "en", Value: "System BIOS"}}},
+					},
+				},
+			},
+		}
 
-	// Verify provides section
-	assert.NotEmpty(t, component.Provides, "Should have provides entries")
+		components, err := entry.ToAppstream()
+		assert.NoError(t, err)
+		assert.Len(t, components, 1)
+
+		component := components[0]
+		assert.Equal(t, "<p>Fixes for CVE-2024-1234 &amp; CVE-2024-5678</p>", component.Description.Value,
+			"Ampersands in description should be XML-escaped")
+		assert.Equal(t, "Security & Management Firmware", component.Summary,
+			"Summary should preserve raw ampersand (XML marshaler handles escaping)")
+
+		// Verify the XML round-trips correctly
+		xmlBytes, err := xml.MarshalIndent(component, "", "  ")
+		assert.NoError(t, err, "XML marshaling should succeed")
+		assert.Contains(t, string(xmlBytes), "&amp;", "Serialized XML should contain escaped ampersand")
+	})
+
+	t.Run("NoDevices", func(t *testing.T) {
+		entry := &DellFirmwareEntry{
+			Filename: "test-firmware.exe",
+			DellSoftwareComponent: &DellSoftwareComponent{
+				Path:          "FOLDER01/test-firmware.exe",
+				VendorVersion: "1.0.0",
+				DateTime:      mustParseTime("2024-01-15T10:30:00Z"),
+				Name: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Orphan Firmware"},
+					},
+				},
+				Description: DellTranslatable{
+					Display: []DellTranslatableEntry{
+						{Lang: "en", Value: "Firmware with no devices"},
+					},
+				},
+				LUCategory:       DellTranslatableWithValue{Value: "BIOS"},
+				Criticality:      DellCriticality{Value: 3},
+				SupportedDevices: []DellDevice{},
+			},
+		}
+
+		components, err := entry.ToAppstream()
+		assert.NoError(t, err, "ToAppstream should not return an error")
+		assert.Empty(t, components, "Should return no components when there are no devices")
+	})
 }
 
 // Helper function for parsing time in tests

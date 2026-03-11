@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io"
 	"os"
 	"path/filepath"
@@ -141,88 +142,97 @@ func (dfe *DellFirmwareEntry) GetSourceURL() string {
 	return dfe.SourceURL
 }
 
-func (dfe *DellFirmwareEntry) ToAppstream() (*lvfs.Component, error) {
+func (dfe *DellFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
 	return processFirmware(*dfe.DellSoftwareComponent)
 }
 
-func processFirmware(fw DellSoftwareComponent) (*lvfs.Component, error) {
-	out := lvfs.Component{
-		Type:            "firmware",
-		MetadataLicense: "proprietary",
-		ProjectLicense:  "proprietary",
+func processFirmware(fw DellSoftwareComponent) ([]lvfs.Component, error) {
+	fwName, _ := getString(fw.Name, "en")
+
+	description, err := getString(fw.Description, "en")
+	if err != nil {
+		return nil, err
 	}
 
-	out.Name, _ = getString(fw.Name, "en")
-	out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower("Dell"), uuid.NewSHA1(uuid.NameSpaceDNS, []byte(out.Name)).String())
+	var rebootCustom []lvfs.Custom
+	if fw.RebootRequired {
+		rebootMessage, err := getString(fw.ImportantInfo, "en")
+		if err != nil {
+			return nil, err
+		}
+		rebootCustom = []lvfs.Custom{
+			{Key: "LVFS::DeviceFlags", Value: "skips-restart"},
+			{Key: "LVFS::UpdateMessage", Value: rebootMessage},
+		}
+	}
 
-	for _, brand := range fw.SupportedSystems {
-		for _, system := range brand.Models {
-			for _, dev := range fw.SupportedDevices {
+	var categories []string
+	switch fw.LUCategory.Value {
+	case "BIOS":
+		categories = append(categories, "X-System")
+	case "Serial ATA", "SAS Drive":
+		categories = append(categories, "X-Drive")
+	case "Express Flash PCIe SSD":
+		categories = append(categories, "X-SolidStateDrive")
+	case "Network":
+		categories = append(categories, "X-NetworkInterface")
+	case "Chassis System Management":
+		categories = append(categories, "X-Controller")
+	case "iDRAC with Lifecycle Controller":
+		categories = append(categories, "X-BaseboardManagementController")
+	}
+
+	// Create one component per supported device
+	var components []lvfs.Component
+	for _, dev := range fw.SupportedDevices {
+		out := lvfs.Component{
+			Type:            "firmware",
+			MetadataLicense: "proprietary",
+			ProjectLicense:  "proprietary",
+		}
+
+		devName, _ := getString(dev.DellTranslatable, "en")
+		out.Name = devName
+		out.Summary = fwName
+		out.Description = lvfs.Description{
+			Value: "<p>" + html.EscapeString(description) + "</p>",
+		}
+		out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower("Dell"), uuid.NewSHA1(uuid.NameSpaceDNS, []byte(dev.ComponentID)).String())
+
+		// Provides: GUIDs for this specific device across all system IDs
+		for _, brand := range fw.SupportedSystems {
+			for _, system := range brand.Models {
 				out.Provides = append(out.Provides, lvfs.Firmware{
 					Type: "flashed",
 					Text: uuid.NewSHA1(uuid.NameSpaceDNS, fmt.Appendf(nil, "REDFISH\\VENDOR_Dell&SYSTEMID_%s&SOFTWAREID_%s", system.SystemID, dev.ComponentID)).String(),
 				})
 			}
 		}
-	}
 
-	if fw.RebootRequired {
-		out.Custom = append(out.Custom, lvfs.Custom{
-			Key:   "LVFS::DeviceFlags",
-			Value: "skips-restart",
+		out.Custom = append(out.Custom, rebootCustom...)
+
+		out.Categories = append(out.Categories, categories...)
+
+		out.Releases = append(out.Releases, lvfs.Release{
+			Version:     fw.VendorVersion,
+			Date:        fw.DateTime.Format(time.DateOnly),
+			Description: out.Description,
+			Urgency:     getUrgency(fw.Criticality.Value),
 		})
-		rebootMessage, err := getString(fw.ImportantInfo, "en")
-		if err != nil {
-			return nil, err
-		}
 
 		out.Custom = append(out.Custom, lvfs.Custom{
-			Key:   "LVFS::UpdateMessage",
-			Value: rebootMessage,
+			Key:   "LVFS::UpdateProtocol",
+			Value: "org.dmtf.redfish",
+		}, lvfs.Custom{
+			Key: "LVFS::DeviceIntegrity",
+			// All Dell firmware going through Redfish are signed
+			Value: "signed",
 		})
+
+		components = append(components, out)
 	}
 
-	summary, err := getString(fw.Description, "en")
-	if err != nil {
-		return nil, err
-	}
-	out.Summary = summary
-	out.Description = lvfs.Description{
-		Value: "<p>" + summary + "</p>",
-	}
-
-	out.Releases = append(out.Releases, lvfs.Release{
-		Version:     fw.VendorVersion,
-		Date:        fw.DateTime.Format(time.DateOnly),
-		Description: out.Description,
-		Urgency:     getUrgency(fw.Criticality.Value),
-	})
-
-	switch fw.LUCategory.Value {
-	case "BIOS":
-		out.Categories = append(out.Categories, "X-System")
-	case "Serial ATA", "SAS Drive":
-		out.Categories = append(out.Categories, "X-Drive")
-	case "Express Flash PCIe SSD":
-		out.Categories = append(out.Categories, "X-SolidStateDrive")
-	case "Network":
-		out.Categories = append(out.Categories, "X-NetworkInterface")
-	case "Chassis System Management":
-		out.Categories = append(out.Categories, "X-Controller")
-	case "iDRAC with Lifecycle Controller":
-		out.Categories = append(out.Categories, "X-BaseboardManagementController")
-	}
-
-	out.Custom = append(out.Custom, lvfs.Custom{
-		Key:   "LVFS::UpdateProtocol",
-		Value: "org.dmtf.redfish",
-	}, lvfs.Custom{
-		Key: "LVFS::DeviceIntegrity",
-		// All Dell firmware going through Redfish are signed
-		Value: "signed",
-	})
-
-	return &out, nil
+	return components, nil
 }
 
 func getString(strings DellTranslatable, language string) (string, error) {

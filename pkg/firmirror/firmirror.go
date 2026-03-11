@@ -106,31 +106,42 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 			continue
 		}
 
-		// Convert to AppStream
-		appstream, err := entry.ToAppstream()
+		// Convert to AppStream components (one firmware entry may produce multiple components)
+		components, err := entry.ToAppstream()
 		if err != nil {
 			entryLogger.Error("Failed to convert firmware", "error", err)
 			continue
 		}
 
-		// Add source URL
+		if len(components) == 0 {
+			entryLogger.Info("No components produced, skipping")
+			os.RemoveAll(tmpDir)
+			continue
+		}
+
 		sourceURL := entry.GetSourceURL()
-		if sourceURL != "" {
-			appstream.URL = lvfs.URL{
-				Type: "homepage",
-				Text: sourceURL,
+		componentPtrs := make([]*lvfs.Component, len(components))
+		for i := range components {
+			componentPtrs[i] = &components[i]
+			if sourceURL != "" {
+				componentPtrs[i].URL = lvfs.URL{
+					Type: "homepage",
+					Text: sourceURL,
+				}
 			}
 		}
 
-		// Build package
-		if err = f.buildPackage(ctx, appstream, fwName, tmpDir); err != nil {
+		// Build a single package containing all component metainfo XMLs
+		if err = f.buildPackage(ctx, componentPtrs, fwName, tmpDir); err != nil {
 			entryLogger.Error("Failed to build package", "error", err)
+			os.RemoveAll(tmpDir)
 			continue
 		}
 		os.RemoveAll(tmpDir)
 
-		// Accumulate component for metadata generation
-		f.newComponents = append(f.newComponents, *appstream)
+		for _, comp := range componentPtrs {
+			f.newComponents = append(f.newComponents, *comp)
+		}
 
 		processed++
 		entryLogger.Debug("Successfully processed firmware")
@@ -140,42 +151,38 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 	return nil
 }
 
-func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Component, fwFile, tmpDir string) error {
+func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.Component, fwFile, tmpDir string) error {
 	fwPath := filepath.Join(tmpDir, fwFile)
 	logger := slog.With("firmware", fwFile)
 
-	// Add checksums to all releases
+	// Calculate firmware checksums (shared by all components)
 	sha1Hash, sha256Hash, err := calculateChecksums(fwPath)
 	if err != nil {
 		return err
 	}
 
-	for i := range appstream.Releases {
-		appstream.Releases[i].Checksums = []lvfs.Checksum{
-			{
-				Filename: fwFile,
-				Target:   "content",
-				Type:     "sha1",
-				Value:    sha1Hash,
-			},
-			{
-				Filename: fwFile,
-				Target:   "content",
-				Type:     "sha256",
-				Value:    sha256Hash,
-			},
+	// Write a metainfo XML per component, add firmware checksums to each
+	var metainfoPaths []string
+	for i, component := range components {
+		for j := range component.Releases {
+			component.Releases[j].Checksums = []lvfs.Checksum{
+				{Filename: fwFile, Target: "content", Type: "sha1", Value: sha1Hash},
+				{Filename: fwFile, Target: "content", Type: "sha256", Value: sha256Hash},
+			}
 		}
-	}
 
-	fwMeta := filepath.Join(tmpDir, "firmware.metainfo.xml")
-	outBytes := []byte(xml.Header)
-	xmlBytes, err := xml.MarshalIndent(appstream, "", "  ")
-	if err != nil {
-		return err
-	}
-	outBytes = append(outBytes, xmlBytes...)
-	if err = os.WriteFile(fwMeta, outBytes, 0644); err != nil {
-		return err
+		metaName := fmt.Sprintf("%d.metainfo.xml", i)
+		metaPath := filepath.Join(tmpDir, metaName)
+		outBytes := []byte(xml.Header)
+		xmlBytes, err := xml.MarshalIndent(component, "", "  ")
+		if err != nil {
+			return err
+		}
+		outBytes = append(outBytes, xmlBytes...)
+		if err = os.WriteFile(metaPath, outBytes, 0644); err != nil {
+			return err
+		}
+		metainfoPaths = append(metainfoPaths, metaPath)
 	}
 
 	fwSig := filepath.Join(tmpDir, "firmware.jcat")
@@ -183,15 +190,19 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Comp
 	if err := f.signMetadata(fwSig, fwPath); err != nil {
 		return err
 	}
-	// sign metadata
-	if err := f.signMetadata(fwSig, fwMeta); err != nil {
-		return err
+	// sign each metainfo
+	for _, metaPath := range metainfoPaths {
+		if err := f.signMetadata(fwSig, metaPath); err != nil {
+			return err
+		}
 	}
 
-	// Build CAB in the temporary directory
+	// Build CAB with firmware file, all metainfo XMLs, and jcat at the end
 	cabBaseName := fwFile + ".cab"
 	cabPathInCache := filepath.Join(tmpDir, cabBaseName)
-	fwupdArgs := []string{"build-cabinet", cabPathInCache, fwPath, fwMeta, fwSig}
+	fwupdArgs := []string{"build-cabinet", cabPathInCache, fwPath}
+	fwupdArgs = append(fwupdArgs, metainfoPaths...)
+	fwupdArgs = append(fwupdArgs, fwSig)
 	cmd := exec.Command("fwupdtool", fwupdArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -199,30 +210,26 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, appstream *lvfs.Comp
 		return err
 	}
 
-	// Calculate CAB checksums for artifacts section
+	// Calculate CAB checksums (shared by all components)
 	cabSha1, cabSha256, err := calculateChecksums(cabPathInCache)
 	if err != nil {
 		return fmt.Errorf("failed to calculate CAB checksums: %w", err)
 	}
 
 	cabName := cabSha256 + "-" + fwFile + ".cab"
-	// Add artifacts section to all releases
-	for i := range appstream.Releases {
-		appstream.Releases[i].Artifacts = []lvfs.Artifact{
-			{
-				Type:     "binary",
-				Location: cabName,
-				Checksums: []lvfs.Checksum{
-					{
-						Type:  "sha1",
-						Value: cabSha1,
-					},
-					{
-						Type:  "sha256",
-						Value: cabSha256,
+	// Add artifacts section to all components
+	for _, component := range components {
+		for i := range component.Releases {
+			component.Releases[i].Artifacts = []lvfs.Artifact{
+				{
+					Type:     "binary",
+					Location: cabName,
+					Checksums: []lvfs.Checksum{
+						{Type: "sha1", Value: cabSha1},
+						{Type: "sha256", Value: cabSha256},
 					},
 				},
-			},
+			}
 		}
 	}
 
