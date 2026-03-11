@@ -1,5 +1,7 @@
 package hpe
 
+import "encoding/json"
+
 // HPEVendor implements the Vendor interface for HPE
 type HPEVendor struct {
 	BaseURL string
@@ -100,7 +102,7 @@ type HPEInstallation struct {
 	Command                 string            `json:"command"`
 	CommandParams           string            `json:"command_params"`
 	InstallCaps             HPEInstallCaps    `json:"install_caps"`
-	PerDeviceInstallTimeSec int               `json:"per_device_install_time_seconds"`
+	PerDeviceInstallTimeSec json.Number       `json:"per_device_install_time_seconds"`
 	RebootDetails           []HPERebootDetail `json:"reboot_details"`
 	RebootRequired          string            `json:"reboot_required"`
 }
