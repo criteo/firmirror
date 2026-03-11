@@ -133,7 +133,7 @@ func (hfe *HPEFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
 		return nil, err
 	}
 
-	appstream, err := buildAppStream(payload)
+	appstream, err := buildAppStream(payload, hfe.Entry)
 	if err != nil {
 		return nil, err
 	}
@@ -142,9 +142,11 @@ func (hfe *HPEFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
 }
 
 // buildAppStream converts an HPE firmware payload to an AppStream component.
+// The catalogEntry provides fallback metadata for older firmware packages
+// whose payload.json lacks the "package" section.
 // Note: we make the assumption that all devices in the payload will have the same version
 // as well as the install duration.
-func buildAppStream(fw HPEPayload) (*lvfs.Component, error) {
+func buildAppStream(fw HPEPayload, catalogEntry *HPECatalogEntry) (*lvfs.Component, error) {
 	out := lvfs.Component{
 		Type:            "firmware",
 		MetadataLicense: "proprietary",
@@ -167,10 +169,15 @@ func buildAppStream(fw HPEPayload) (*lvfs.Component, error) {
 
 	manufacturer, err := getString(fw.Package.ManufacturerName, "en")
 	if err != nil {
-		return nil, err
+		manufacturer = "Hewlett Packard Enterprise"
 	}
 	out.DeveloperName = manufacturer
-	out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower(strings.ReplaceAll(manufacturer, " ", "")), strings.ReplaceAll(fw.Package.SwKeys[0].Name, " ", ""))
+
+	if len(fw.Package.SwKeys) > 0 {
+		out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower(strings.ReplaceAll(manufacturer, " ", "")), strings.ReplaceAll(fw.Package.SwKeys[0].Name, " ", ""))
+	} else {
+		out.ID = fmt.Sprintf("com.%s.%s", strings.ToLower(strings.ReplaceAll(manufacturer, " ", "")), fw.DeviceClass)
+	}
 
 	if fw.Package.Installation.RebootRequired == "yes" {
 		out.Custom = append(out.Custom, lvfs.Custom{
@@ -190,21 +197,31 @@ func buildAppStream(fw HPEPayload) (*lvfs.Component, error) {
 
 	summary, err := getString(fw.Package.Name, "en")
 	if err != nil {
-		return nil, err
+		summary = out.Name
 	}
 	out.Summary = strings.ReplaceAll(strings.ReplaceAll(summary, "\t", ""), "  ", " ")
 
 	description, err := getString(fw.Package.Description, "en")
-	if err != nil {
-		return nil, err
+	if err != nil && catalogEntry != nil {
+		description = catalogEntry.Description
 	}
-	out.Description = lvfs.Description{
-		Value: "<p>" + html.EscapeString(description) + "</p>",
+	if description != "" {
+		out.Description = lvfs.Description{
+			Value: "<p>" + html.EscapeString(description) + "</p>",
+		}
 	}
 
-	releaseDate, err := time.Parse("2006-01-02T15:04:05", fw.Package.ReleaseDate)
-	if err != nil {
-		return nil, err
+	var releaseDate time.Time
+	if fw.Package.ReleaseDate != "" {
+		releaseDate, err = time.Parse("2006-01-02T15:04:05", fw.Package.ReleaseDate)
+		if err != nil {
+			return nil, err
+		}
+	} else if catalogEntry != nil && catalogEntry.Date != "" {
+		releaseDate, err = time.Parse("20060102", catalogEntry.Date)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse catalog date %q: %w", catalogEntry.Date, err)
+		}
 	}
 
 	out.Releases = append(out.Releases, lvfs.Release{
@@ -237,13 +254,16 @@ func buildAppStream(fw HPEPayload) (*lvfs.Component, error) {
 	return &out, nil
 }
 
-func getString(strings []HPETranslations, language string) (string, error) {
-	for _, l := range strings {
+func getString(translations []HPETranslations, language string) (string, error) {
+	for _, l := range translations {
 		if l.Lang == language {
 			return l.XLate, nil
 		}
 	}
-	return "", fmt.Errorf("language not found: %s", language)
+	if len(translations) > 0 {
+		return translations[0].XLate, nil
+	}
+	return "", fmt.Errorf("no translations available")
 }
 
 func readFileFromZip(zipFile, filename string) ([]byte, error) {
