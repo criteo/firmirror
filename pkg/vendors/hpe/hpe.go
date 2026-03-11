@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
+"html"
 	"io"
 	"os"
 	"path/filepath"
@@ -198,7 +199,7 @@ func buildAppStream(fw HPEPayload) (*lvfs.Component, error) {
 		return nil, err
 	}
 	out.Description = lvfs.Description{
-		Value: "<p>" + description + "</p>",
+		Value: "<p>" + html.EscapeString(description) + "</p>",
 	}
 
 	releaseDate, err := time.Parse("2006-01-02T15:04:05", fw.Package.ReleaseDate)
