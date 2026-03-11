@@ -17,7 +17,7 @@ import (
 
 type DellFlags struct {
 	Enable     bool     `help:"Enable Dell firmware fetching." default:"false"`
-	MachinesID []string `help:"List of machine IDs to fetch firmware for. They are composed of 4 characters representing the machine type, followed by 4 digits representing the hexadecimal machine ID. For example: \"0C60\" for \"3168\" corresponding to the C6615 series of servers. You can also specify \"*\" to fetch all the firmware, but this may take a very long time."`
+	MachinesID []string `help:"List of machine IDs to fetch firmware for. They are composed of 4 characters in hexadecimal representing the machine type. For example: \"0C60\" for \"3168\" corresponding to the C6615 series of servers. You can also specify \"*\" to fetch all the firmware, but this may take a very long time."`
 }
 
 type HPEFlags struct {
