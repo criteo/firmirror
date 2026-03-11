@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/criteo/firmirror/pkg/lvfs"
@@ -20,9 +21,10 @@ func createTestSyncer(t *testing.T) (*FirmirrorSyncer, string) {
 	storage, err := NewLocalStorage(filepath.Join(tmpDir, "output"))
 	require.NoError(t, err)
 	config := FirmirrorConfig{
-		CacheDir:    filepath.Join(tmpDir, "cache"),
-		Certificate: "", // No certificate for tests
-		PrivateKey:  "", // No private key for tests
+		CacheDir:       filepath.Join(tmpDir, "cache"),
+		Certificate:    "", // No certificate for tests
+		PrivateKey:     "", // No private key for tests
+		MaxConcurrency: 2,
 	}
 
 	return NewFirmirrorSyncer(config, storage), tmpDir
@@ -33,6 +35,7 @@ type MockVendor struct {
 	catalog         *MockCatalog
 	fetchErr        error
 	retrieveErr     error
+	mu              sync.Mutex
 	retrievedFiles  []string
 	retrieveContent string
 }
@@ -62,7 +65,9 @@ func (m *MockVendor) RetrieveFirmware(entry FirmwareEntry, tmpDir string) error 
 		return err
 	}
 
+	m.mu.Lock()
 	m.retrievedFiles = append(m.retrievedFiles, filename)
+	m.mu.Unlock()
 	return nil
 }
 

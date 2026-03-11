@@ -43,7 +43,8 @@ var args struct {
 	HPEFlags  `embed:"" prefix:"hpe." group:"HPE" help:"HPE firmware fetching."`
 	S3        `embed:"" prefix:"s3." group:"S3 Storage" help:"S3 storage backend configuration."`
 	Signature `embed:"" prefix:"sign." group:"Signature" help:"Metadata signing configuration."`
-	OutputDir string `help:"Output directory for the LVFS-compatible firmware repository (ignored when using S3)" type:"path"`
+	OutputDir   string `help:"Output directory for the LVFS-compatible firmware repository (ignored when using S3)" type:"path"`
+	Concurrency int    `help:"Maximum number of firmware entries downloaded and processed concurrently per vendor" default:"8"`
 	Refresh   struct {
 	} `cmd:"" help:"Refresh all the firmware from the repositories. Note: this will not replace the already-existing firmware, even if the vendor pushed an updated version. You will need to delete the firmware manually."`
 }
@@ -102,9 +103,10 @@ func main() {
 	}
 
 	config := firmirror.FirmirrorConfig{
-		CacheDir:    ".firmirror_cache",
-		Certificate: args.Signature.Certificate,
-		PrivateKey:  args.Signature.PrivateKey,
+		CacheDir:       ".firmirror_cache",
+		Certificate:    args.Signature.Certificate,
+		PrivateKey:     args.Signature.PrivateKey,
+		MaxConcurrency: args.Concurrency,
 	}
 
 	if !args.HPEFlags.Enable && !args.DellFlags.Enable {

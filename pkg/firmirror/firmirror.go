@@ -13,15 +13,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 
 	"github.com/criteo/firmirror/pkg/lvfs"
 	"github.com/klauspost/compress/zstd"
 )
 
 type FirmirrorConfig struct {
-	CacheDir    string // Local cache directory for temporary work
-	Certificate string // Path to certificate file for signing metadata (.pem or .crt)
-	PrivateKey  string // Path to private key file for signing metadata (.pem or .key)
+	CacheDir       string // Local cache directory for temporary work
+	Certificate    string // Path to certificate file for signing metadata (.pem or .crt)
+	PrivateKey     string // Path to private key file for signing metadata (.pem or .key)
+	MaxConcurrency int    // Maximum number of firmware entries processed concurrently (default 1)
 }
 
 type FirmirrorSyncer struct {
@@ -58,7 +60,8 @@ func (f *FirmirrorSyncer) GetAllVendors() map[string]Vendor {
 	return maps.Clone(f.vendors)
 }
 
-// ProcessVendor processes firmware for a given vendor using the interface
+// ProcessVendor processes firmware for a given vendor using the interface.
+// Entries are processed concurrently up to Config.MaxConcurrency workers.
 func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vendorName string) error {
 	logger := slog.With("vendor", vendorName)
 	logger.Debug("Fetching catalog")
@@ -70,85 +73,114 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 	}
 
 	entries := catalog.ListEntries()
+
+	sem := make(chan struct{}, f.Config.MaxConcurrency)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 	processed := 0
 	skipped := 0
 
 	for _, entry := range entries {
-		// Stop if interruption raised
-		// TODO: Trickle down to downloads as well
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
 		fwName := entry.GetFilename()
-		entryLogger := logger.With("firmware", fwName)
 
-		// Check if firmware is already in metadata index
+		// Check if firmware is already in metadata index (read-only map, safe for concurrent reads)
 		if f.existingIndex[fwName] {
-			entryLogger.Info("Firmware already in metadata index, skipping")
+			logger.With("firmware", fwName).Info("Firmware already in metadata index, skipping")
 			skipped++
 			continue
 		}
 
-		entryLogger.Info("Processing firmware")
-
-		tmpDir := filepath.Join(f.Config.CacheDir, fwName+".wrk")
-		if err := os.MkdirAll(tmpDir, 0755); err != nil {
-			entryLogger.Error("Failed to create temp directory", "error", err)
-			continue
+		// Acquire semaphore slot, respecting context cancellation
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+		}
+		if ctx.Err() != nil {
+			break
 		}
 
-		if err = vendor.RetrieveFirmware(entry, tmpDir); err != nil {
-			entryLogger.Error("Failed to retrieve firmware", "error", err)
-			os.RemoveAll(tmpDir) // Clean up on error
-			continue
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
 
-		// Convert to AppStream components (one firmware entry may produce multiple components)
-		components, err := entry.ToAppstream()
-		if err != nil {
-			entryLogger.Error("Failed to convert firmware", "error", err)
-			continue
-		}
-
-		if len(components) == 0 {
-			entryLogger.Info("No components produced, skipping")
-			os.RemoveAll(tmpDir)
-			continue
-		}
-
-		sourceURL := entry.GetSourceURL()
-		componentPtrs := make([]*lvfs.Component, len(components))
-		for i := range components {
-			componentPtrs[i] = &components[i]
-			if sourceURL != "" {
-				componentPtrs[i].URL = lvfs.URL{
-					Type: "homepage",
-					Text: sourceURL,
-				}
+			components := f.processEntry(ctx, vendor, entry, fwName, logger)
+			if components == nil {
+				return
 			}
-		}
 
-		// Build a single package containing all component metainfo XMLs
-		if err = f.buildPackage(ctx, componentPtrs, fwName, tmpDir); err != nil {
-			entryLogger.Error("Failed to build package", "error", err)
-			os.RemoveAll(tmpDir)
-			continue
-		}
-		os.RemoveAll(tmpDir)
-
-		for _, comp := range componentPtrs {
-			f.newComponents = append(f.newComponents, *comp)
-		}
-
-		processed++
-		entryLogger.Debug("Successfully processed firmware")
+			mu.Lock()
+			f.newComponents = append(f.newComponents, components...)
+			processed++
+			mu.Unlock()
+		}()
 	}
+
+	wg.Wait()
 
 	logger.Info("Completed vendor processing", "processed", processed, "skipped", skipped, "total", len(entries))
 	return nil
+}
+
+// processEntry handles downloading, converting and packaging a single firmware entry.
+// Returns the resulting components, or nil on error.
+func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry FirmwareEntry, fwName string, logger *slog.Logger) []lvfs.Component {
+	entryLogger := logger.With("firmware", fwName)
+	entryLogger.Info("Processing firmware")
+
+	tmpDir := filepath.Join(f.Config.CacheDir, fwName+".wrk")
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		entryLogger.Error("Failed to create temp directory", "error", err)
+		return nil
+	}
+
+	if err := vendor.RetrieveFirmware(entry, tmpDir); err != nil {
+		entryLogger.Error("Failed to retrieve firmware", "error", err)
+		os.RemoveAll(tmpDir)
+		return nil
+	}
+
+	// Convert to AppStream components (one firmware entry may produce multiple components)
+	components, err := entry.ToAppstream()
+	if err != nil {
+		entryLogger.Error("Failed to convert firmware", "error", err)
+		os.RemoveAll(tmpDir)
+		return nil
+	}
+
+	if len(components) == 0 {
+		entryLogger.Info("No components produced, skipping")
+		os.RemoveAll(tmpDir)
+		return nil
+	}
+
+	sourceURL := entry.GetSourceURL()
+	componentPtrs := make([]*lvfs.Component, len(components))
+	for i := range components {
+		componentPtrs[i] = &components[i]
+		if sourceURL != "" {
+			componentPtrs[i].URL = lvfs.URL{
+				Type: "homepage",
+				Text: sourceURL,
+			}
+		}
+	}
+
+	// Build a single package containing all component metainfo XMLs
+	if err = f.buildPackage(ctx, componentPtrs, fwName, tmpDir); err != nil {
+		entryLogger.Error("Failed to build package", "error", err)
+		os.RemoveAll(tmpDir)
+		return nil
+	}
+	os.RemoveAll(tmpDir)
+
+	result := make([]lvfs.Component, len(componentPtrs))
+	for i, comp := range componentPtrs {
+		result[i] = *comp
+	}
+
+	entryLogger.Debug("Successfully processed firmware")
+	return result
 }
 
 func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.Component, fwFile, tmpDir string) error {
