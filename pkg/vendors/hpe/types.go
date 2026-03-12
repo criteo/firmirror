@@ -19,6 +19,7 @@ type HPEFirmwareEntry struct {
 	Entry        *HPECatalogEntry
 	SourceURL    string
 	downloadPath string // Store download path for processing
+	payloadJSON  []byte // Sidecar payload.json content (may be nil if not available)
 }
 
 type HPECatalogEntry struct {
@@ -70,7 +71,7 @@ type HPEPackage struct {
 	Category               []HPECategory             `json:"category"`
 	Description            []HPETranslations         `json:"description"`
 	Divisions              []HPEDivision             `json:"divisions"`
-	Files                  map[string]any            `json:"files"`
+	Files                  json.RawMessage           `json:"files"`
 	ID                     HPEID                     `json:"id"`
 	Installation           HPEInstallation           `json:"installation"`
 	InstallationDependency HPEInstallationDependency `json:"installation_dependency"`
