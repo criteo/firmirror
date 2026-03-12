@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/criteo/firmirror/pkg/lvfs"
 	"github.com/klauspost/compress/zstd"
@@ -127,6 +128,7 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry FirmwareEntry, fwName string, logger *slog.Logger) []lvfs.Component {
 	entryLogger := logger.With("firmware", fwName)
 	entryLogger.Info("Processing firmware")
+	start := time.Now()
 
 	tmpDir := filepath.Join(f.Config.CacheDir, fwName+".wrk")
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
@@ -134,11 +136,13 @@ func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry
 		return nil
 	}
 
+	t0 := time.Now()
 	if err := vendor.RetrieveFirmware(entry, tmpDir); err != nil {
 		entryLogger.Error("Failed to retrieve firmware", "error", err)
 		os.RemoveAll(tmpDir)
 		return nil
 	}
+	entryLogger.Info("Downloaded firmware", "duration", time.Since(t0).Round(time.Millisecond))
 
 	// Convert to AppStream components (one firmware entry may produce multiple components)
 	components, err := entry.ToAppstream()
@@ -167,11 +171,13 @@ func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry
 	}
 
 	// Build a single package containing all component metainfo XMLs
+	t0 = time.Now()
 	if err = f.buildPackage(ctx, componentPtrs, fwName, tmpDir); err != nil {
 		entryLogger.Error("Failed to build package", "error", err)
 		os.RemoveAll(tmpDir)
 		return nil
 	}
+	entryLogger.Info("Built and uploaded package", "duration", time.Since(t0).Round(time.Millisecond))
 	os.RemoveAll(tmpDir)
 
 	result := make([]lvfs.Component, len(componentPtrs))
@@ -179,7 +185,7 @@ func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry
 		result[i] = *comp
 	}
 
-	entryLogger.Debug("Successfully processed firmware")
+	entryLogger.Info("Completed firmware", "total_duration", time.Since(start).Round(time.Millisecond))
 	return result
 }
 

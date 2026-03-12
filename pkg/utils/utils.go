@@ -10,9 +10,14 @@ import (
 
 const maxRetries = 3
 
-// httpClient is a shared HTTP client with timeout
+// httpClient is a shared HTTP client.
+// The global Timeout (10 min) acts as a safety net against indefinitely stalled transfers.
+// ResponseHeaderTimeout (30s) ensures we fail fast if the server never starts responding.
 var httpClient = &http.Client{
-	Timeout: time.Minute,
+	Timeout: 10 * time.Minute,
+	Transport: &http.Transport{
+		ResponseHeaderTimeout: 30 * time.Second,
+	},
 }
 
 func DownloadFile(url string) (io.ReadCloser, error) {
