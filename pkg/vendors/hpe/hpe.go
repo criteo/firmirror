@@ -80,6 +80,13 @@ func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir stri
 		return fmt.Errorf("invalid entry type for HPE vendor")
 	}
 
+	// Try to fetch the sidecar .json metadata (available in some repos, e.g. gen12)
+	jsonURL := hv.BaseURL + "/current/" + strings.TrimSuffix(hpeEntry.Filename, ".fwpkg") + ".json"
+	if resp, err := utils.DownloadFile(jsonURL); err == nil {
+		hpeEntry.payloadJSON, _ = io.ReadAll(resp)
+		resp.Close()
+	}
+
 	filepath := filepath.Join(tmpDir, filepath.Base(hpeEntry.Filename))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := utils.DownloadFileToDest(hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
@@ -123,13 +130,18 @@ func (hfe *HPEFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
 		return nil, fmt.Errorf("firmware must be retrieved first using RetrieveFirmware")
 	}
 
-	payloadFile, err := readFileFromZip(hfe.downloadPath, "payload.json")
-	if err != nil {
-		return nil, err
+	// Prefer sidecar .json metadata if available (richer than in-package payload.json)
+	payloadFile := hfe.payloadJSON
+	if payloadFile == nil {
+		var err error
+		payloadFile, err = readFileFromZip(hfe.downloadPath, "payload.json")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var payload HPEPayload
-	if err = json.Unmarshal(payloadFile, &payload); err != nil {
+	if err := json.Unmarshal(payloadFile, &payload); err != nil {
 		return nil, err
 	}
 
