@@ -80,16 +80,22 @@ func (s *S3Storage) Write(ctx context.Context, key string, data io.Reader) error
 		return fmt.Errorf("failed to read data: %w", err)
 	}
 
-	_, err = s.uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fullKey),
-		Body:   bytes.NewReader(buf),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to upload to S3: %w", err)
+	const maxRetries = 3
+	for attempt := range maxRetries {
+		_, err = s.uploader.Upload(ctx, &s3.PutObjectInput{
+			Bucket: aws.String(s.bucket),
+			Key:    aws.String(fullKey),
+			Body:   bytes.NewReader(buf),
+		})
+		if err == nil {
+			return nil
+		}
+		if attempt < maxRetries-1 && ctx.Err() == nil {
+			continue
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed to upload to S3 after %d attempts: %w", maxRetries, err)
 }
 
 // Read retrieves data for the given key from S3
