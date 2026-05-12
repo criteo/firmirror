@@ -22,7 +22,7 @@ type DellFlags struct {
 
 type HPEFlags struct {
 	Enable bool     `help:"Enable HPE firmware fetching." default:"false"`
-	Gens   []string `help:"List of generations to fetch firmware for." default:"gen10,gen11,gen12" enum:"gen10,gen11,gen12"`
+	Gens   []string `help:"List of generations to fetch firmware for." default:"gen8,gen9,gen10,gen11,gen12" enum:"gen8,gen9,gen10,gen11,gen12"`
 }
 
 type S3 struct {
@@ -39,13 +39,13 @@ type Signature struct {
 }
 
 var args struct {
-	DellFlags `embed:"" prefix:"dell." group:"Dell" help:"Dell firmware fetching."`
-	HPEFlags  `embed:"" prefix:"hpe." group:"HPE" help:"HPE firmware fetching."`
-	S3        `embed:"" prefix:"s3." group:"S3 Storage" help:"S3 storage backend configuration."`
-	Signature `embed:"" prefix:"sign." group:"Signature" help:"Metadata signing configuration."`
+	DellFlags   `embed:"" prefix:"dell." group:"Dell" help:"Dell firmware fetching."`
+	HPEFlags    `embed:"" prefix:"hpe." group:"HPE" help:"HPE firmware fetching."`
+	S3          `embed:"" prefix:"s3." group:"S3 Storage" help:"S3 storage backend configuration."`
+	Signature   `embed:"" prefix:"sign." group:"Signature" help:"Metadata signing configuration."`
 	OutputDir   string `help:"Output directory for the LVFS-compatible firmware repository (ignored when using S3)" type:"path"`
 	Concurrency int    `help:"Maximum number of firmware entries downloaded and processed concurrently per vendor" default:"8"`
-	Refresh   struct {
+	Refresh     struct {
 	} `cmd:"" help:"Refresh all the firmware from the repositories. Note: this will not replace the already-existing firmware, even if the vendor pushed an updated version. You will need to delete the firmware manually."`
 }
 
