@@ -50,4 +50,4 @@ To access the firmware repository data:
   kubectl exec -it -n {{ .Release.Namespace }} <pod-name> -- ls -lh {{ .Values.outputDir }}
 {{- end }}
 
-For more information, visit: https://github.com/criteo/firmirror
+For more information, visit: https://github.com/premday/firmirror

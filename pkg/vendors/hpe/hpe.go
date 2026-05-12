@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/criteo/firmirror/pkg/firmirror"
-	"github.com/criteo/firmirror/pkg/lvfs"
-	"github.com/criteo/firmirror/pkg/utils"
+	"github.com/premday/firmirror/pkg/firmirror"
+	"github.com/premday/firmirror/pkg/lvfs"
+	"github.com/premday/firmirror/pkg/utils"
 )
 
 // NewHPEVendor creates a new HPE vendor instance

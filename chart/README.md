@@ -36,7 +36,7 @@ The following table lists the configurable parameters of the Firmirror chart and
 | `schedule` | Cron schedule for the job | `"0 2 * * *"` (2 AM daily) |
 | `nameOverride` | Override the chart name | `""` |
 | `fullnameOverride` | Override the full release name | `""` |
-| `image.repository` | Container image repository | `ghcr.io/criteo/firmirror` |
+| `image.repository` | Container image repository | `ghcr.io/premday/firmirror` |
 | `image.tag` | Container image tag | `""` (Chart appVersion) |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `imagePullSecrets` | Image pull secrets | `[]` |

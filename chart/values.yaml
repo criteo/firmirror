@@ -3,7 +3,7 @@ schedule: "0 2 * * *"
 
 # Container image configuration
 image:
-  repository: ghcr.io/criteo/firmirror
+  repository: ghcr.io/premday/firmirror
   pullPolicy: IfNotPresent
   tag: ""  # Defaults to the chart appVersion
 

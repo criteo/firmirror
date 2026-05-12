@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/criteo/firmirror/pkg/lvfs"
+	"github.com/premday/firmirror/pkg/lvfs"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

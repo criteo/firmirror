@@ -1,6 +1,6 @@
 package firmirror
 
-import "github.com/criteo/firmirror/pkg/lvfs"
+import "github.com/premday/firmirror/pkg/lvfs"
 
 type Vendor interface {
 	// FetchCatalog retrieves the catalog of firmware for the vendor.

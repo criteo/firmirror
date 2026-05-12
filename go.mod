@@ -1,4 +1,4 @@
-module github.com/criteo/firmirror
+module github.com/premday/firmirror
 
 go 1.23.4
 

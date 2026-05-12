@@ -10,9 +10,9 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/criteo/firmirror/pkg/firmirror"
-	"github.com/criteo/firmirror/pkg/vendors/dell"
-	"github.com/criteo/firmirror/pkg/vendors/hpe"
+	"github.com/premday/firmirror/pkg/firmirror"
+	"github.com/premday/firmirror/pkg/vendors/dell"
+	"github.com/premday/firmirror/pkg/vendors/hpe"
 )
 
 type DellFlags struct {

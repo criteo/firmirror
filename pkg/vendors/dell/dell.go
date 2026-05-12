@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/criteo/firmirror/pkg/firmirror"
-	"github.com/criteo/firmirror/pkg/lvfs"
-	"github.com/criteo/firmirror/pkg/utils"
+	"github.com/premday/firmirror/pkg/firmirror"
+	"github.com/premday/firmirror/pkg/lvfs"
+	"github.com/premday/firmirror/pkg/utils"
 	"github.com/google/uuid"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"

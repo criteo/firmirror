@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/criteo/firmirror/pkg/lvfs"
+	"github.com/premday/firmirror/pkg/lvfs"
 	"github.com/klauspost/compress/zstd"
 )
 
