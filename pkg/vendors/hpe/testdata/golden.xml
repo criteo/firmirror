@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="firmware">
+  <id>com.hewlettpackardenterprise.Mellanox_NIC_PLDM_MCX623106AS-CDAT</id>
+  <name>HPE Ethernet 100Gb 2-port QSFP56 MCX623106AS-CDAT Adapter</name>
+  <summary>Mellanox Firmware Package (FWPKG) for Mellanox MCX623106AS-CDAT Ethernet 100Gb 2-port QSFP56 Adapter for HPE</summary>
+  <developer_name>Hewlett Packard Enterprise</developer_name>
+  <description><p>Mellanox HPE signed PLDM Firmware Package for Mellanox MCX623106AS-CDAT Ethernet 100Gb 2-port QSFP56 Adapter for HPE</p></description>
+  <provides>
+    <firmware type="flashed">a6b1a447-382a-5a4f-15b3-101d15b30042</firmware>
+  </provides>
+  <url type=""></url>
+  <metadata_license>proprietary</metadata_license>
+  <project_license>proprietary</project_license>
+  <releases>
+    <release version="22.41.1000" date="2024-06-21" install_duration="360">
+      <description><p>Mellanox HPE signed PLDM Firmware Package for Mellanox MCX623106AS-CDAT Ethernet 100Gb 2-port QSFP56 Adapter for HPE</p></description>
+      <issues></issues>
+      <artifacts></artifacts>
+    </release>
+  </releases>
+  <requires></requires>
+  <custom>
+    <value key="LVFS::DeviceFlags">skips-restart</value>
+    <value key="LVFS::UpdateMessage">Reboot is required after installation for updates to take effect and hardware stability to be maintained.</value>
+    <value key="LVFS::UpdateProtocol">org.dmtf.redfish</value>
+    <value key="LVFS::DeviceIntegrity">signed</value>
+  </custom>
+  <keywords></keywords>
+  <categories>
+    <category>X-NetworkInterface</category>
+  </categories>
+</component>
