@@ -26,14 +26,30 @@ func NewLocalStorage(basePath string) (*LocalStorage, error) {
 func (s *LocalStorage) Write(ctx context.Context, key string, data io.Reader) error {
 	fullPath := filepath.Join(s.basePath, key)
 
-	file, err := os.Create(fullPath)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return fmt.Errorf("failed to create parent directory: %w", err)
 	}
-	defer file.Close()
 
-	if _, err := io.Copy(file, data); err != nil {
+	tmpFile, err := os.CreateTemp(filepath.Dir(fullPath), ".firmirror-tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+
+	if _, err := io.Copy(tmpFile, data); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
 		return fmt.Errorf("failed to write data: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, fullPath); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 
 	return nil
