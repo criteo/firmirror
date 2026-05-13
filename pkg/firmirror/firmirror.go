@@ -122,7 +122,7 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			components := f.processEntry(ctx, vendor, entry, fwName, logger)
+			components := f.processEntry(ctx, vendor, vendorName, entry, fwName, logger)
 			if components == nil {
 				mu.Lock()
 				errors++
@@ -148,12 +148,12 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 
 // processEntry handles downloading, converting and packaging a single firmware entry.
 // Returns the resulting components, or nil on error.
-func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry FirmwareEntry, fwName string, logger *slog.Logger) []lvfs.Component {
+func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, vendorName string, entry FirmwareEntry, fwName string, logger *slog.Logger) []lvfs.Component {
 	entryLogger := logger.With("firmware", fwName)
 	entryLogger.Info("Processing firmware")
 	start := time.Now()
 
-	tmpDir := filepath.Join(f.Config.CacheDir, fwName+".wrk")
+	tmpDir := filepath.Join(f.Config.CacheDir, vendorName+"-"+fwName+".wrk")
 	os.RemoveAll(tmpDir)
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		entryLogger.Error("Failed to create temp directory", "error", err)
