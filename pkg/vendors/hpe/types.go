@@ -18,8 +18,8 @@ type HPEFirmwareEntry struct {
 	Filename     string
 	Entry        *HPECatalogEntry
 	SourceURL    string
-	downloadPath string // Store download path for processing
-	payloadJSON  []byte // Sidecar payload.json content (may be nil if not available)
+	DownloadPath string `json:"-"` // Store download path for processing
+	PayloadJSON  []byte `json:"-"` // Sidecar payload.json content (may be nil if not available)
 }
 
 type HPECatalogEntry struct {

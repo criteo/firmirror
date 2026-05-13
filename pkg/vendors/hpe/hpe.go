@@ -46,16 +46,21 @@ func (hv *HPEVendor) fetchCatalog(ctx context.Context) (*HPECatalog, error) {
 	}
 	defer jsondata.Close()
 
+	catalog, err := parseHPECatalog(jsondata)
+	if err != nil {
+		return nil, err
+	}
+	catalog.BaseURL = hv.BaseURL
+	return catalog, nil
+}
+
+func parseHPECatalog(r io.Reader) (*HPECatalog, error) {
 	var entries map[string]HPECatalogEntry
-	if err := json.NewDecoder(jsondata).Decode(&entries); err != nil {
+	if err := json.NewDecoder(r).Decode(&entries); err != nil {
 		return nil, fmt.Errorf("decoding HPE catalog JSON: %w", err)
 	}
 
-	catalog := &HPECatalog{
-		Entries: entries,
-		BaseURL: hv.BaseURL,
-	}
-	return catalog, nil
+	return &HPECatalog{Entries: entries}, nil
 }
 
 func (hv *HPEVendor) filterCatalog(catalog *HPECatalog) *HPECatalog {
@@ -90,7 +95,7 @@ func (hv *HPEVendor) RetrieveFirmware(ctx context.Context, entry firmirror.Firmw
 		if readErr != nil {
 			slog.Warn("Failed to read payload JSON sidecar", "url", jsonURL, "error", readErr)
 		} else {
-			hpeEntry.payloadJSON = data
+			hpeEntry.PayloadJSON = data
 		}
 	}
 
@@ -102,7 +107,7 @@ func (hv *HPEVendor) RetrieveFirmware(ctx context.Context, entry firmirror.Firmw
 	}
 
 	// Store the download path in the entry for later processing
-	hpeEntry.downloadPath = filepath
+	hpeEntry.DownloadPath = filepath
 	return nil
 }
 
@@ -133,15 +138,15 @@ func (hfe *HPEFirmwareEntry) GetSourceURL() string {
 // ToAppstream implements the FirmwareEntry interface
 // HPE requires the firmware to be downloaded first, so we use the stored path
 func (hfe *HPEFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
-	if hfe.downloadPath == "" {
+	if hfe.DownloadPath == "" {
 		return nil, fmt.Errorf("firmware must be retrieved first using RetrieveFirmware")
 	}
 
 	// Prefer sidecar .json metadata if available (richer than in-package payload.json)
-	payloadFile := hfe.payloadJSON
+	payloadFile := hfe.PayloadJSON
 	if payloadFile == nil {
 		var err error
-		payloadFile, err = readFileFromZip(hfe.downloadPath, "payload.json")
+		payloadFile, err = readFileFromZip(hfe.DownloadPath, "payload.json")
 		if err != nil {
 			return nil, err
 		}
