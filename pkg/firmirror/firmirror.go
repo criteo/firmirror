@@ -36,10 +36,10 @@ type FirmirrorSyncer struct {
 	newComponents    []lvfs.Component // Components accumulated during this run
 }
 
-func NewFirmirrorSyncer(config FirmirrorConfig, storage Storage) *FirmirrorSyncer {
+func NewFirmirrorSyncer(config FirmirrorConfig, storage Storage) (*FirmirrorSyncer, error) {
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(config.CacheDir, 0755); err != nil {
-		slog.Error("Failed to create cache directory", "dir", config.CacheDir, "error", err)
+		return nil, fmt.Errorf("failed to create cache directory %s: %w", config.CacheDir, err)
 	}
 
 	cleanStaleWorkDirs(config.CacheDir)
@@ -49,7 +49,7 @@ func NewFirmirrorSyncer(config FirmirrorConfig, storage Storage) *FirmirrorSynce
 		Storage:       storage,
 		vendors:       make(map[string]Vendor),
 		existingIndex: make(map[string]bool),
-	}
+	}, nil
 }
 
 func cleanStaleWorkDirs(cacheDir string) {

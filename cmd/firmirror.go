@@ -104,12 +104,21 @@ func main() {
 		MaxConcurrency: args.Concurrency,
 	}
 
+	if args.Concurrency < 1 {
+		slog.Error("Concurrency must be at least 1", "value", args.Concurrency)
+		return
+	}
+
 	if !args.HPEFlags.Enable && !args.DellFlags.Enable {
 		slog.Error("No vendor enabled, exiting")
 		return
 	}
 
-	fm := firmirror.NewFirmirrorSyncer(config, storage)
+	fm, err := firmirror.NewFirmirrorSyncer(config, storage)
+	if err != nil {
+		slog.Error("Failed to create syncer", "error", err)
+		return
+	}
 
 	if args.HPEFlags.Enable {
 		for _, gen := range args.HPEFlags.Gens {
