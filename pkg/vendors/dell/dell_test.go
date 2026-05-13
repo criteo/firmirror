@@ -111,8 +111,8 @@ func TestDellVendor_FetchCatalog(t *testing.T) {
 		dellCatalog, ok := catalog.(*DellCatalog)
 		assert.True(t, ok, "Catalog should be of type *DellCatalog")
 
-		// Should have 2 firmware entries (drivers should be filtered out)
-		assert.Len(t, dellCatalog.SoftwareComponents, 2, "Should have 2 firmware components")
+		// Should have 1 firmware entry (drivers should be filtered out)
+		assert.Len(t, dellCatalog.SoftwareComponents, 1, "Should have 1 firmware component")
 
 		// Verify only firmware components are included
 		for _, component := range dellCatalog.SoftwareComponents {
@@ -133,8 +133,8 @@ func TestDellVendor_FetchCatalog(t *testing.T) {
 		dellCatalog, ok := catalog.(*DellCatalog)
 		assert.True(t, ok, "Catalog should be of type *DellCatalog")
 
-		// Should have 2 entries (both firmware support 0C60)
-		assert.Len(t, dellCatalog.SoftwareComponents, 2, "Should have 2 components for system 0C60")
+		// Should have 1 entry (the firmware component supports 0C60)
+		assert.Len(t, dellCatalog.SoftwareComponents, 1, "Should have 1 component for system 0C60")
 	})
 
 	t.Run("WithNonMatchingSystemIDFilter", func(t *testing.T) {

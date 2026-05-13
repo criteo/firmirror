@@ -1,123 +1,123 @@
 <?xml version="1.0" encoding="UTF-16"?>
 <Manifest version="1.0" dateTime="2024-01-15T10:30:00Z" baseLocation="https://dl.dell.com">
-  <SoftwareComponent dateTime="2024-01-15T10:30:00Z" dellVersion="1.0.0" hashMD5="abc123def456" packageID="test-firmware-1" packageType="BIN" path="FOLDER01/firmware1.exe" rebootRequired="true" releaseDate="2024-01-15" releaseID="R001" schemaVersion="2.0" size="1024000" vendorVersion="1.0.0">
+  <SoftwareComponent schemaVersion="3.0" releaseID="28H65" releaseDate="July 02, 2020" vendorVersion="22.27.61.06" dellVersion="22.27.61.06" packageType="LW64" xmlGenVersion="1.0.3681" path="FOLDER06355472M/1/Network_Firmware_28H65_WN64_22.27.61.06.EXE" packageID="28H65" dateTime="2020-07-02T13:20:54-05:00" hashMD5="49044213279a0a7db023ec27381fc64e" size="19809640" identifier="f4699d67-054a-42d0-bf26-e943d70c3a19" rebootRequired="true" hash="e350fc5520b9e34175ea6c450aac2e6bec34c6fbdd04b69e8b456125bfe3262e" hashAlgorithm="SHA256">
     <Name>
-      <Display lang="en">Test Network Firmware</Display>
+      <Display lang="en"><![CDATA[Mellanox ConnectX-6 DX Ethernet Adapter Firmware]]></Display>
     </Name>
     <ComponentType value="FRMW">
-      <Display lang="en">Firmware</Display>
+      <Display lang="en"><![CDATA[Firmware]]></Display>
     </ComponentType>
     <Description>
-      <Display lang="en">Test firmware for network adapter</Display>
+      <Display lang="en"><![CDATA[This package provides the Firmware update for Mellanox ConnectX-6 DX Adapters]]></Display>
     </Description>
     <LUCategory value="Network">
-      <Display lang="en">Network</Display>
+      <Display lang="en"><![CDATA[Network]]></Display>
     </LUCategory>
-    <Category value="NW">
-      <Display lang="en">Network</Display>
+    <Category value="NI">
+      <Display lang="en"><![CDATA[Network]]></Display>
     </Category>
-    <ImportantInfo>
-      <Display lang="en">Reboot required after installation</Display>
-    </ImportantInfo>
     <SupportedDevices>
-      <Device componentID="DEV001" embedded="false">
-        <Display lang="en">Network Device 1</Display>
+      <Device componentID="109587" embedded="0">
+        <PCIInfo deviceID="101D" vendorID="15B3" subDeviceID="0058" subVendorID="15B3"></PCIInfo>
+        <PCIInfo deviceID="101D" vendorID="15B3" subDeviceID="0058" subVendorID="15B3"></PCIInfo>
+        <Display lang="en"><![CDATA[Mellanox ConnectX-6 Dx Dual Port 100GbE QSFP56 PCIe Adapter]]></Display>
+        <RollbackInformation rollbackIdentifier="e50ab4da-9cbf-4350-8feb-5dd89310baa6" rollbackVolume="MAS022" fmpWrapperIdentifier="57faf611-e42f-41b1-8dbd-78c95e29bdd9" rollbackTimeout="2160" impactsTPMmeasurements="true"></RollbackInformation>
+      </Device>
+      <Device componentID="109999" embedded="0">
+        <Display lang="en"><![CDATA[Mellanox ConnectX-6 Family of Server Adapters Firmware]]></Display>
+        <RollbackInformation rollbackIdentifier="e50ab4da-9cbf-4350-8feb-5dd89310baa6" rollbackVolume="MAS022" fmpWrapperIdentifier="57faf611-e42f-41b1-8dbd-78c95e29bdd9" rollbackTimeout="2160" impactsTPMmeasurements="true"></RollbackInformation>
       </Device>
     </SupportedDevices>
-    <RevisionHistory>
-      <Display lang="en">Initial release</Display>
-    </RevisionHistory>
     <SupportedSystems>
-      <Brand key="1" prefix="Dell Inc.">
-        <Display lang="en">Dell</Display>
-        <Model systemID="0C60" systemIDType="ServiceTag">
-          <Display lang="en">PowerEdge R750</Display>
+      <Brand key="3" prefix="PE">
+        <Display lang="en"><![CDATA[PowerEdge]]></Display>
+        <Model systemID="0717" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[C4140]]></Display>
         </Model>
-        <Model systemID="0C61" systemIDType="ServiceTag">
-          <Display lang="en">PowerEdge R760</Display>
+        <Model systemID="0748" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[FC640]]></Display>
+        </Model>
+        <Model systemID="0715" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R740]]></Display>
+        </Model>
+        <Model systemID="09C7" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[XE2420]]></Display>
+        </Model>
+        <Model systemID="08FD" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R7515]]></Display>
+        </Model>
+        <Model systemID="0838" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R940xa]]></Display>
+        </Model>
+        <Model systemID="08FF" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R7525]]></Display>
+        </Model>
+        <Model systemID="0716" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R640]]></Display>
+        </Model>
+        <Model systemID="08FE" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R6525]]></Display>
+        </Model>
+        <Model systemID="08C2" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R740xd2]]></Display>
+        </Model>
+        <Model systemID="0728" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R940]]></Display>
+        </Model>
+        <Model systemID="08FC" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R6515]]></Display>
+        </Model>
+        <Model systemID="0737" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R740xd]]></Display>
+        </Model>
+        <Model systemID="0900" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[C6525]]></Display>
+        </Model>
+        <Model systemID="07FC" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R840]]></Display>
+        </Model>
+        <Model systemID="0757" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[C6420]]></Display>
+        </Model>
+        <Model systemID="0C60" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R640]]></Display>
+        </Model>
+        <Model systemID="0C61" systemIDType="BIOS">
+          <Display lang="en"><![CDATA[R740]]></Display>
         </Model>
       </Brand>
     </SupportedSystems>
+    <InstallInstruction fileName="Network_Firmware_28H65_WN64_22.27.61.06.EXE" typeCode="LW64">
+      <Display lang="en"><![CDATA[Update Package Instructions for Network_Firmware_28H65_WN64_22.27.61.06.EXE. 
+
+
+
+Installation
+
+1. Browse to the location where you downloaded the file and double-click Network_Firmware_28H65_WN64_22.27.61.06.EXE.
+
+2. Read over the release information presented in the dialog window.
+
+3. Download and install any prerequisites identified in the dialog window before proceeding.
+
+4. If this is a BIOS update package, install any necessary Embedded Systems Management firmware prior to this BIOS update. Otherwise, go next step.
+
+5. Click the Install button.
+
+6. Follow the remaining prompts to perform the update.]]></Display>
+    </InstallInstruction>
+    <RevisionHistory>
+      <Display lang="en"><![CDATA[Initial Release]]></Display>
+    </RevisionHistory>
+    <ImportantInfo URL="https://www.dell.com/support/home/us/en/19/Drivers/DriversDetails?driverId=28H65"></ImportantInfo>
     <Criticality value="1">
-      <Display lang="en">Recommended</Display>
+      <Display lang="en"><![CDATA[Recommended]]></Display>
     </Criticality>
-  </SoftwareComponent>
-  <SoftwareComponent dateTime="2024-01-20T14:45:00Z" dellVersion="2.1.0" hashMD5="def456ghi789" packageID="test-bios-1" packageType="BIN" path="FOLDER02/bios.exe" rebootRequired="true" releaseDate="2024-01-20" releaseID="R002" schemaVersion="2.0" size="2048000" vendorVersion="2.1.0">
-    <Name>
-      <Display lang="en">Test BIOS Update</Display>
-    </Name>
-    <ComponentType value="FRMW">
-      <Display lang="en">Firmware</Display>
-    </ComponentType>
-    <Description>
-      <Display lang="en">BIOS firmware update</Display>
-    </Description>
-    <LUCategory value="BIOS">
-      <Display lang="en">BIOS</Display>
-    </LUCategory>
-    <Category value="BI">
-      <Display lang="en">BIOS</Display>
-    </Category>
-    <ImportantInfo>
-      <Display lang="en">Critical BIOS update</Display>
-    </ImportantInfo>
-    <SupportedDevices>
-      <Device componentID="BIOS001" embedded="true">
-        <Display lang="en">System BIOS</Display>
-      </Device>
-    </SupportedDevices>
-    <RevisionHistory>
-      <Display lang="en">Security fixes and performance improvements</Display>
-    </RevisionHistory>
-    <SupportedSystems>
-      <Brand key="1" prefix="Dell Inc.">
-        <Display lang="en">Dell</Display>
-        <Model systemID="0C60" systemIDType="ServiceTag">
-          <Display lang="en">PowerEdge R750</Display>
-        </Model>
-      </Brand>
-    </SupportedSystems>
-    <Criticality value="2">
-      <Display lang="en">Critical</Display>
-    </Criticality>
-  </SoftwareComponent>
-  <SoftwareComponent dateTime="2024-01-10T12:00:00Z" dellVersion="3.0.0" hashMD5="ghi789jkl012" packageID="test-driver-1" packageType="BIN" path="FOLDER03/driver.exe" rebootRequired="false" releaseDate="2024-01-10" releaseID="R003" schemaVersion="2.0" size="512000" vendorVersion="3.0.0">
-    <Name>
-      <Display lang="en">Test Network Driver</Display>
-    </Name>
-    <ComponentType value="DRVR">
-      <Display lang="en">Driver</Display>
-    </ComponentType>
-    <Description>
-      <Display lang="en">Network driver update</Display>
-    </Description>
-    <LUCategory value="Network">
-      <Display lang="en">Network</Display>
-    </LUCategory>
-    <Category value="NW">
-      <Display lang="en">Network</Display>
-    </Category>
-    <ImportantInfo>
-      <Display lang="en">Driver update</Display>
-    </ImportantInfo>
-    <SupportedDevices>
-      <Device componentID="DEV002" embedded="false">
-        <Display lang="en">Network Device 2</Display>
-      </Device>
-    </SupportedDevices>
-    <RevisionHistory>
-      <Display lang="en">Driver improvements</Display>
-    </RevisionHistory>
-    <SupportedSystems>
-      <Brand key="1" prefix="Dell Inc.">
-        <Display lang="en">Dell</Display>
-        <Model systemID="0C70" systemIDType="ServiceTag">
-          <Display lang="en">PowerEdge R640</Display>
-        </Model>
-      </Brand>
-    </SupportedSystems>
-    <Criticality value="3">
-      <Display lang="en">Optional</Display>
-    </Criticality>
+    <FMPWrappers>
+      <FMPWrapperInformation identifier="57faf611-e42f-41b1-8dbd-78c95e29bdd9" name="NIC" filePathName="FmpUpdateWrapper.efi" digitalSignature="false">
+        <Inventory supported="true" source="Device"></Inventory>
+        <Update supported="true" rollback="true"></Update>
+      </FMPWrapperInformation>
+    </FMPWrappers>
   </SoftwareComponent>
 </Manifest>
