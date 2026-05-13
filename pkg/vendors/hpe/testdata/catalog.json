@@ -1,38 +1,26 @@
 {
-  "test-firmware-v1.0.0.fwpkg": {
-    "date": "20240115",
-    "description": "Test firmware for network adapter",
+  "22_41_1000-MCX623106AS-CDA_Ax.pldm.fwpkg": {
+    "date": "20240621",
+    "description": "Mellanox Firmware Package (FWPKG) for Mellanox MCX623106AS-CDAT Ethernet 100Gb 2-port QSFP56 Adapter for HPE",
     "deviceclass": "79f0c163-0c13-4662-9dea-09235fef90cb",
     "minimum_active_version": "null",
     "reboot_required": "yes",
     "server_power_off": "False",
     "target": [
-       "a6b1a447-382a-5a4f-15b3-101715900346"
+      "a6b1a447-382a-5a4f-15b3-101d15b30042"
     ],
-    "version": "16.29.1016"
+    "version": "22.41.1000"
   },
-  "test-ilo-firmware-v2.1.0.fwpkg": {
-    "date": "20240120",
-    "description": "Test iLO firmware update",
-    "deviceclass": "2f317b9d-c9e3-4d76-bff6-b9d0d085a952",
-    "minimum_active_version": "null",
-    "reboot_required": "no",
-    "server_power_off": "False",
-    "target": [
-       "4764a662-b342-4fc7-9ce9-258c5d99e815"
-    ],
-    "version": "1.48"
-  },
-  "other-file.zip": {
-    "date": "20240110",
-    "description": "Other file type that should be filtered out",
-    "deviceclass": "null",
+  "22_42_1000-MCX623106AS-CDA_Ax.pldm.fwpkg": {
+    "date": "20240921",
+    "description": "Mellanox Firmware Package (FWPKG) for Mellanox MCX623106AS-CDAT Ethernet 100Gb 2-port QSFP56 Adapter for HPE",
+    "deviceclass": "79f0c163-0c13-4662-9dea-09235fef90cb",
     "minimum_active_version": "null",
     "reboot_required": "yes",
     "server_power_off": "False",
     "target": [
-       "null"
+      "a6b1a447-382a-5a4f-15b3-101d15b30042"
     ],
-    "version": "15.10.10.00"
+    "version": "22.42.1000"
   }
 }

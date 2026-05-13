@@ -1,127 +1,540 @@
 {
-    "DeviceClass": "79f0c163-0c13-4662-9dea-09235fef90cb",
+    "DeviceClass": "79f0c163-0c13-4662-9dea-09235fef90cb", 
     "Devices": {
         "Device": [
             {
-                "DeviceName": "Network Device",
+                "DeviceName": "HPE Ethernet 100Gb 2-port QSFP56 MCX623106AS-CDAT Adapter", 
                 "FirmwareImages": [
                     {
-                        "FileName": "22_41_1000-MCX623106AS-CDA_Ax.pldm.signed",
-                        "InstallDurationSec": 300,
-                        "Order": 1,
-                        "PLDMImage": true,
-                        "ResetRequired": true,
-                        "SysPowerON": true,
-                        "Type": "Firmware",
+                        "DelayAfterInstallSec": 0, 
+                        "DirectFlashOk": true, 
+                        "FileName": "22_41_1000-MCX623106AS-CDA_Ax.pldm.signed", 
+                        "InstallDurationSec": 360, 
+                        "Order": 1, 
+                        "PLDMImage": true, 
+                        "ResetRequired": true, 
+                        "SysPowerON": true, 
+                        "Type": "Firmware", 
                         "UefiFlashable": true
                     }
-                ],
-                "Target": "a6b1a447-382a-5a4f-15b3-101d15b30042",
+                ], 
+                "Target": "a6b1a447-382a-5a4f-15b3-101d15b30042", 
                 "Version": "22.41.1000"
             }
         ]
-    },
-    "PackageFormat": "FWPKG-v2",
-    "Type": "Firmware",
+    }, 
+    "PackageFormat": "FWPKG-v2", 
+    "Type": "Firmware", 
     "UpdatableBy": [
         "Bmc"
-    ],
+    ], 
     "package": {
         "category": [
             {
-                "key": "2900095",
+                "key": "2900095", 
                 "languages": [
                     {
-                        "lang": "fr",
+                        "lang": "fr", 
                         "x_late": "Micrologiciel - Réseau"
-                    },
+                    }, 
                     {
-                        "lang": "en",
+                        "lang": "en", 
                         "x_late": "Firmware - Network"
+                    }, 
+                    {
+                        "lang": "cn", 
+                        "x_late": "固件 - 网络"
+                    }, 
+                    {
+                        "lang": "tw", 
+                        "x_late": "韌體 ─ 網路"
+                    }, 
+                    {
+                        "lang": "de", 
+                        "x_late": "Firmware - Netzwerk"
+                    }, 
+                    {
+                        "lang": "ko", 
+                        "x_late": "펌웨어 - 네트워크"
+                    }, 
+                    {
+                        "lang": "it", 
+                        "x_late": "Firmware - Rete"
+                    }, 
+                    {
+                        "lang": "ja", 
+                        "x_late": "ファームウェア - ネットワーク"
+                    }, 
+                    {
+                        "lang": "es", 
+                        "x_late": "Firmware - Red"
                     }
                 ]
             }
-        ],
+        ], 
         "description": [
             {
-                "lang": "en",
-                "x_late": "Test firmware for network adapter"
+                "lang": "en", 
+                "x_late": "Mellanox HPE signed PLDM Firmware Package for Mellanox MCX623106AS-CDAT Ethernet 100Gb 2-port QSFP56 Adapter for HPE"
+            }, 
+            {
+                "lang": "ja", 
+                "x_late": "Mellanox HPE署名済みPLDMファームウェアパッケージfor Mellanox MCX623106AS-CDAT Ethernet 100Gb 2ポートQSFP56アダプターfor HPE"
             }
-        ],
+        ], 
+        "divisions": [
+            {
+                "key": "6", 
+                "language": [
+                    {
+                        "lang": "tw", 
+                        "x_late": "伺服器"
+                    }, 
+                    {
+                        "lang": "en", 
+                        "x_late": "Server"
+                    }, 
+                    {
+                        "lang": "ko", 
+                        "x_late": "서버"
+                    }, 
+                    {
+                        "lang": "ja", 
+                        "x_late": "サーバ"
+                    }, 
+                    {
+                        "lang": "cn", 
+                        "x_late": "服务器"
+                    }
+                ]
+            }, 
+            {
+                "key": "68", 
+                "language": [
+                    {
+                        "lang": "en", 
+                        "x_late": "ServerOptions"
+                    }, 
+                    {
+                        "lang": "ko", 
+                        "x_late": "서버 옵션"
+                    }, 
+                    {
+                        "lang": "ja", 
+                        "x_late": "サーバ オプション"
+                    }, 
+                    {
+                        "lang": "cn", 
+                        "x_late": "服务器选项"
+                    }
+                ]
+            }, 
+            {
+                "key": "65", 
+                "language": [
+                    {
+                        "lang": "tw", 
+                        "x_late": "網路"
+                    }, 
+                    {
+                        "lang": "en", 
+                        "x_late": "Networking"
+                    }, 
+                    {
+                        "lang": "ko", 
+                        "x_late": "네트워킹"
+                    }, 
+                    {
+                        "lang": "ja", 
+                        "x_late": "ネットワーク"
+                    }, 
+                    {
+                        "lang": "cn", 
+                        "x_late": "网络"
+                    }
+                ]
+            }
+        ], 
+        "files": {}, 
         "id": {
-            "product": "23c569ea92fb47f091a7a0c891acff72",
+            "product": "23c569ea92fb47f091a7a0c891acff72", 
             "version": "44a7a2b1e90348cf94878c37e9710bc4"
-        },
+        }, 
         "installation": {
-            "command": "",
-            "command_params": "",
+            "command": "", 
+            "command_params": "", 
             "install_caps": {
-                "needuseracct": "no",
+                "needuseracct": "no", 
                 "silent": "no"
-            },
-            "per_device_install_time_seconds": 360,
+            }, 
+            "per_device_install_time_seconds": 360, 
             "reboot_details": [
                 {
                     "language": [
                         {
-                            "lang": "tw",
+                            "lang": "tw", 
                             "x_late": "安裝後必須重新啟動，更新才會生效，並維持硬體穩定。"
-                        },
+                        }, 
                         {
-                            "lang": "en",
+                            "lang": "en", 
                             "x_late": "Reboot is required after installation for updates to take effect and hardware stability to be maintained."
-                        },
+                        }, 
                         {
-                            "lang": "ko",
+                            "lang": "ko", 
                             "x_late": "업데이트가 적용되고 하드웨어 안정성이 유지되려면 설치 후 재부팅해야 합니다."
-                        },
+                        }, 
                         {
-                            "lang": "ja",
+                            "lang": "ja", 
                             "x_late": "アップデートの効果とハードウェアの安定を得るために、インストール後の再起動は必要です。"
-                        },
+                        }, 
                         {
-                            "lang": "cn",
+                            "lang": "cn", 
                             "x_late": "安装之后必须重启才能使更新生效并保持硬件稳定性。"
                         }
                     ]
                 }
-            ],
+            ], 
             "reboot_required": "yes"
-        },
+        }, 
         "installation_dependency": {
             "DependencyRequirement": {
                 "ApplicableTo": {
                     "GuidTargets": {
                         "GuidTarget": []
                     }
-                },
-                "DateCreated": "2024-05-27T13:11:14.4145598+00:00",
+                }, 
+                "DateCreated": "2024-05-27T13:11:14.4145598+00:00", 
                 "Requires": {
                     "Requirements": []
                 }
             }
-        },
+        }, 
         "manufacturer_name": [
             {
-                "lang": "en",
+                "lang": "en", 
                 "x_late": "Hewlett Packard Enterprise"
-            },
+            }, 
             {
-                "lang": "cn",
+                "lang": "cn", 
                 "x_late": "惠普企业"
             }
-        ],
+        ], 
         "name": [
             {
-                "lang": "en",
-                "x_late": "Test Network Firmware"
+                "lang": "en", 
+                "x_late": "Mellanox Firmware Package (FWPKG) for Mellanox MCX623106AS-CDAT Ethernet 100Gb 2-port QSFP56 Adapter for HPE"
+            }, 
+            {
+                "lang": "ja", 
+                "x_late": "Mellanoxファームウェアパッケージ（FWPKG）- MCX623106AS-CDAT Ethernet 100Gb 2ポートQSFP56アダプターfor HPE"
             }
-        ],
-        "release_date": "2024-06-21T06:08:27",
-        "schema_version": "1.0.0.0",
+        ], 
+        "prerequisites": {
+            "required_diskspace": {
+                "size_kb": "32000"
+            }, 
+            "supported_devices": [
+                {
+                    "dev": "101D", 
+                    "subdev": "0042", 
+                    "subven": "15B3", 
+                    "target_guid": "", 
+                    "type": "pci", 
+                    "ven": "15B3"
+                }
+            ], 
+            "supported_operating_systems": [
+                {
+                    "major": "6", 
+                    "minor": "3", 
+                    "name": "Microsoft Windows Server 2012 R2", 
+                    "platform": "nt_x86-64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "10", 
+                    "maximumbuild": "17599", 
+                    "minimumbuild": "14393", 
+                    "minor": "0", 
+                    "name": "Microsoft Windows Server 2016", 
+                    "platform": "nt_x86-64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "10", 
+                    "maximumbuild": "18999", 
+                    "minimumbuild": "17600", 
+                    "minor": "0", 
+                    "name": "Microsoft Windows Server 2019", 
+                    "platform": "nt_x86-64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "10", 
+                    "minimumbuild": "20317", 
+                    "minor": "0", 
+                    "name": "Microsoft Windows Server 2022", 
+                    "platform": "nt_x86-64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "0", 
+                    "minor": "0", 
+                    "name": "Cross Operating System", 
+                    "platform": "oi", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "6", 
+                    "minor": "0", 
+                    "name": "Red Hat Enterprise Linux 6 Server (x86-64)", 
+                    "platform": "red_hat_enterprise_linux_x86_64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "7", 
+                    "minor": "0", 
+                    "name": "Red Hat Enterprise Linux 7 Server", 
+                    "platform": "red_hat_enterprise_linux_x86_64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "8", 
+                    "minor": "0", 
+                    "name": "Red Hat Enterprise Linux 8 Server", 
+                    "platform": "red_hat_enterprise_linux_x86_64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "9", 
+                    "minor": "0", 
+                    "name": "Red Hat Enterprise Linux 9 Server", 
+                    "platform": "red_hat_enterprise_linux_x86_64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "11", 
+                    "minor": "0", 
+                    "name": "SUSE LINUX Enterprise Server 11 (AMD64/EM64T)", 
+                    "platform": "suse_linux_enterprise_server_x86_64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "12", 
+                    "minor": "0", 
+                    "name": "SUSE Linux Enterprise Server 12", 
+                    "platform": "suse_linux_enterprise_server_x86_64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "15", 
+                    "minor": "0", 
+                    "name": "SUSE Linux Enterprise Server 15", 
+                    "platform": "suse_linux_enterprise_server_x86_64", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "7", 
+                    "minor": "0", 
+                    "name": "VMware ESXi 7.0", 
+                    "platform": "vmware_esx_server", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "8", 
+                    "minor": "0", 
+                    "name": "VMware ESXi 8.0", 
+                    "platform": "vmware_esx_server", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "6", 
+                    "minor": "5", 
+                    "name": "VMware vSphere 6.5", 
+                    "platform": "vmware_esx_server", 
+                    "sr": "OEM"
+                }, 
+                {
+                    "major": "6", 
+                    "minor": "7", 
+                    "name": "VMware vSphere 6.7", 
+                    "platform": "vmware_esx_server", 
+                    "sr": "OEM"
+                }
+            ], 
+            "supported_platforms": false
+        }, 
+        "release_date": "2024-06-21T06:08:27", 
+        "schema_version": "1.0.0.0", 
+        "supported_products": [
+            {
+                "key": "A41", 
+                "value": "HPE ProLiant DL325 Gen10 Server"
+            }, 
+            {
+                "key": "A43", 
+                "value": "HPE ProLiant DL345 Gen10 Plus Server"
+            }, 
+            {
+                "key": "A42", 
+                "value": "HPE ProLiant DL385 Gen10 Plus v2 Server"
+            }, 
+            {
+                "key": "A42", 
+                "value": "HPE ProLiant DL365 Gen10 Plus Server"
+            }, 
+            {
+                "key": "A43", 
+                "value": "HPE ProLiant DL325 Gen10 Plus Server"
+            }, 
+            {
+                "key": "U54", 
+                "value": "HPE ProLiant DL360 Gen11 Server"
+            }, 
+            {
+                "key": "A56", 
+                "value": "HPE ProLiant DL325 Gen11 Server"
+            }, 
+            {
+                "key": "A42", 
+                "value": "HPE ProLiant DL385 Gen10 Plus Server"
+            }, 
+            {
+                "key": "", 
+                "value": "HPE Apollo 2000 Gen10 Plus System"
+            }, 
+            {
+                "key": "U58", 
+                "value": "HPE Alletra 4110 Server"
+            }, 
+            {
+                "key": "H10", 
+                "value": "HPE Edgeline e920 Server"
+            }, 
+            {
+                "key": "A55", 
+                "value": "HPE ProLiant DL365 Gen11 Server"
+            }, 
+            {
+                "key": "U50", 
+                "value": "HPE ProLiant XL420 Gen10 Plus Servers"
+            }, 
+            {
+                "key": "H10", 
+                "value": "HPE Edgeline e920t Server"
+            }, 
+            {
+                "key": "U50", 
+                "value": "HPE Apollo 4200 Gen10 Plus Server"
+            }, 
+            {
+                "key": "U54", 
+                "value": "HPE ProLiant ML350 Gen11 Server"
+            }, 
+            {
+                "key": "U61", 
+                "value": "HPE ProLiant ML30 Gen10 Plus Server"
+            }, 
+            {
+                "key": "U57", 
+                "value": "HPE Alletra Storage Server 4140"
+            }, 
+            {
+                "key": "U63", 
+                "value": "HPE ProLiant DL320 Gen11 Server"
+            }, 
+            {
+                "key": "A43", 
+                "value": "HPE ProLiant DL325 Gen10 Plus v2 Server"
+            }, 
+            {
+                "key": "A47", 
+                "value": "HPE ProLiant XL675d Gen10 Plus Server"
+            }, 
+            {
+                "key": "U54", 
+                "value": "HPE ProLiant DL380 Gen11 Server"
+            }, 
+            {
+                "key": "U58", 
+                "value": "HPE ProLiant DL380a Gen11"
+            }, 
+            {
+                "key": "A48", 
+                "value": "HPE ProLiant XL645d Gen10 Plus Servers"
+            }, 
+            {
+                "key": "", 
+                "value": "HPE Apollo 6500 Gen10 Plus (Chassis)"
+            }, 
+            {
+                "key": "U47", 
+                "value": "HPE Apollo n2800 24SFF Gen10 Plus CTO Chassis"
+            }, 
+            {
+                "key": "U47", 
+                "value": "HPE Apollo n2600 24SFF Gen10 Plus CTO Chassis"
+            }, 
+            {
+                "key": "U47", 
+                "value": "HPE ProLiant XL220n Gen10 Plus Server"
+            }, 
+            {
+                "key": "U47", 
+                "value": "HPE ProLiant XL290n Gen10 Plus Server"
+            }, 
+            {
+                "key": "U56", 
+                "value": "HPE ProLiant DL110 Gen10 Plus Telco Server"
+            }, 
+            {
+                "key": "A40", 
+                "value": "HPE ProLiant DL385 Gen10 Server"
+            }, 
+            {
+                "key": "A56", 
+                "value": "HPE ProLiant DL345 Gen11 Server"
+            }, 
+            {
+                "key": "A46", 
+                "value": "HPE ProLiant XL225n Gen10 Plus Server"
+            }, 
+            {
+                "key": "U46", 
+                "value": "HPE Apollo 4100 Gen10 Plus Server"
+            }, 
+            {
+                "key": "A55", 
+                "value": "HPE ProLiant DL385 Gen11 Server"
+            }, 
+            {
+                "key": "U46", 
+                "value": "HPE ProLiant DL380 Gen10 Plus Server"
+            }, 
+            {
+                "key": "H10", 
+                "value": "HPE Edgeline e920d Server"
+            }, 
+            {
+                "key": "U46", 
+                "value": "HPE ProLiant DL360 Gen10 Plus Server"
+            }, 
+            {
+                "key": "U62", 
+                "value": "HPE ProLiant DL110 Gen11 Server"
+            }, 
+            {
+                "key": "U59", 
+                "value": "HPE ProLiant DL560 Gen11 Server"
+            }, 
+            {
+                "key": "U58", 
+                "value": "HPE Alletra Storage Server 4120"
+            }
+        ], 
         "sw_keys": [
             {
-                "name": "TestFirmware",
+                "name": "Mellanox_NIC_PLDM_MCX623106AS-CDAT", 
                 "sw_key_expectedpath": "firmware:nic"
             }
         ]

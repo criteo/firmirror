@@ -71,7 +71,7 @@ func TestHPEVendor_RetrieveFirmware(t *testing.T) {
 	// Check that file was created
 	expectedPath := filepath.Join(tmpDir, "test-firmware-v1.0.0.fwpkg")
 	assert.FileExists(t, expectedPath, "Downloaded file should exist")
-	assert.Equal(t, expectedPath, entry.downloadPath, "Download path should be stored in entry")
+	assert.Equal(t, expectedPath, entry.DownloadPath, "Download path should be stored in entry")
 
 	// Verify file content
 	content, err := os.ReadFile(expectedPath)
@@ -128,7 +128,7 @@ func TestHPEFirmwareEntry_ToAppstream_NotDownloaded(t *testing.T) {
 	entry := &HPEFirmwareEntry{
 		Filename: "test-firmware.fwpkg",
 		Entry:    &HPECatalogEntry{},
-		// downloadPath is empty, should cause error
+		// DownloadPath is empty, should cause error
 	}
 
 	_, err := entry.ToAppstream()
@@ -147,7 +147,7 @@ func TestHPEFirmwareEntry_ToAppstream_InvalidZip(t *testing.T) {
 	entry := &HPEFirmwareEntry{
 		Filename:     "invalid.fwpkg",
 		Entry:        &HPECatalogEntry{},
-		downloadPath: invalidZipPath,
+		DownloadPath: invalidZipPath,
 	}
 
 	_, err = entry.ToAppstream()
@@ -163,7 +163,7 @@ func TestHPEFirmwareEntry_ToAppstream_Success(t *testing.T) {
 	entry := &HPEFirmwareEntry{
 		Filename:     "test-firmware.fwpkg",
 		Entry:        &HPECatalogEntry{},
-		downloadPath: mockFirmwarePath,
+		DownloadPath: mockFirmwarePath,
 	}
 
 	components, err := entry.ToAppstream()
@@ -174,7 +174,7 @@ func TestHPEFirmwareEntry_ToAppstream_Success(t *testing.T) {
 
 	// Verify basic component properties
 	assert.Equal(t, "firmware", component.Type, "Component type should be firmware")
-	assert.Equal(t, "Network Device", component.Name, "Component name should match")
+	assert.Equal(t, "HPE Ethernet 100Gb 2-port QSFP56 MCX623106AS-CDAT Adapter", component.Name, "Component name should match")
 	assert.Equal(t, "Hewlett Packard Enterprise", component.DeveloperName, "Developer name should be HPE")
 
 	// Verify releases
@@ -182,7 +182,7 @@ func TestHPEFirmwareEntry_ToAppstream_Success(t *testing.T) {
 	release := component.Releases[0]
 	assert.Equal(t, "22.41.1000", release.Version, "Release version should match")
 	assert.Equal(t, "2024-06-21", release.Date, "Release date should match")
-	assert.Equal(t, 300, release.InstallDuration, "Install duration should match")
+	assert.Equal(t, 360, release.InstallDuration, "Install duration should match")
 
 	// Verify categories
 	assert.Contains(t, component.Categories, "X-NetworkInterface", "Should contain X-NetworkInterface category")
@@ -223,7 +223,7 @@ func TestHPEFirmwareEntry_ToAppstream_MissingPayload(t *testing.T) {
 	entry := &HPEFirmwareEntry{
 		Filename:     "no-payload.fwpkg",
 		Entry:        &HPECatalogEntry{},
-		downloadPath: zipPath,
+		DownloadPath: zipPath,
 	}
 
 	_, err = entry.ToAppstream()
