@@ -2,10 +2,13 @@ package lvfs
 
 import "encoding/xml"
 
+const MetadataSchemaVersion = 1
+
 type Components struct {
-	XMLName   xml.Name    `xml:"components"`
-	Origin    string      `xml:"origin,attr"`
-	Component []Component `xml:"component"`
+	XMLName       xml.Name    `xml:"components"`
+	SchemaVersion int         `xml:"schema_version,attr,omitempty"`
+	Origin        string      `xml:"origin,attr"`
+	Component     []Component `xml:"component"`
 }
 
 type Component struct {

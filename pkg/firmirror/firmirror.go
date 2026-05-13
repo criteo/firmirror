@@ -381,12 +381,19 @@ func (f *FirmirrorSyncer) LoadMetadata(ctx context.Context) error {
 
 	f.existingMetadata = &components
 
-	// Build index of existing firmware files from checksums
-	for _, comp := range components.Component {
-		for _, release := range comp.Releases {
-			for _, checksum := range release.Checksums {
-				if checksum.Filename != "" {
-					f.existingIndex[checksum.Filename] = true
+	if components.SchemaVersion != lvfs.MetadataSchemaVersion {
+		slog.Warn("Metadata schema version mismatch, forcing full reprocessing",
+			"stored_version", components.SchemaVersion,
+			"current_version", lvfs.MetadataSchemaVersion,
+			"existing_components", len(components.Component))
+	} else {
+		// Build index of existing firmware files from checksums
+		for _, comp := range components.Component {
+			for _, release := range comp.Releases {
+				for _, checksum := range release.Checksums {
+					if checksum.Filename != "" {
+						f.existingIndex[checksum.Filename] = true
+					}
 				}
 			}
 		}
@@ -394,7 +401,8 @@ func (f *FirmirrorSyncer) LoadMetadata(ctx context.Context) error {
 
 	slog.Info("Loaded existing metadata",
 		"components", len(components.Component),
-		"firmware_files", len(f.existingIndex))
+		"firmware_files", len(f.existingIndex),
+		"schema_version", components.SchemaVersion)
 
 	return nil
 }
@@ -433,7 +441,8 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 
 	// Build final components structure (sorted by ID for deterministic output)
 	components := &lvfs.Components{
-		Origin: "firmirror",
+		Origin:        "firmirror",
+		SchemaVersion: lvfs.MetadataSchemaVersion,
 	}
 	keys := slices.Collect(maps.Keys(componentMap))
 	slices.Sort(keys)
@@ -477,25 +486,27 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	}
 	defer os.Remove(compressedPath)
 
-	// Sign metadata
-	signaturePath := compressedPath + ".jcat"
-	if err := f.signMetadata(ctx, signaturePath, compressedPath); err != nil {
-		return fmt.Errorf("signing metadata: %w", err)
-	}
-	defer os.Remove(signaturePath)
+	// Sign metadata (only when signing keys are configured)
+	if f.Config.Certificate != "" && f.Config.PrivateKey != "" {
+		signaturePath := compressedPath + ".jcat"
+		if err := f.signMetadata(ctx, signaturePath, compressedPath); err != nil {
+			return fmt.Errorf("signing metadata: %w", err)
+		}
+		defer os.Remove(signaturePath)
 
-	// Write signature to storage first (metadata is the commit point)
-	sigFile, err := os.Open(signaturePath)
-	if err != nil {
-		return fmt.Errorf("failed to open signature file: %w", err)
-	}
-	sigData, err := io.ReadAll(sigFile)
-	sigFile.Close()
-	if err != nil {
-		return fmt.Errorf("failed to read signature file: %w", err)
-	}
-	if err := f.Storage.Write(ctx, filepath.Base(signaturePath), bytes.NewReader(sigData)); err != nil {
-		return fmt.Errorf("failed to write signature to storage: %w", err)
+		// Write signature to storage first (metadata is the commit point)
+		sigFile, err := os.Open(signaturePath)
+		if err != nil {
+			return fmt.Errorf("failed to open signature file: %w", err)
+		}
+		sigData, err := io.ReadAll(sigFile)
+		sigFile.Close()
+		if err != nil {
+			return fmt.Errorf("failed to read signature file: %w", err)
+		}
+		if err := f.Storage.Write(ctx, filepath.Base(signaturePath), bytes.NewReader(sigData)); err != nil {
+			return fmt.Errorf("failed to write signature to storage: %w", err)
+		}
 	}
 
 	// Write compressed metadata to storage (commit point — written last)
@@ -528,16 +539,17 @@ func (f *FirmirrorSyncer) signMetadata(ctx context.Context, sigPath, filePath st
 	file := filepath.Base(filePath)
 	sig := filepath.Base(sigPath)
 
-	// Create JCAT file with checksum
-	if err := jcatTool([]string{"self-sign", sig, file, "--kind", "sha256"}, wd); err != nil {
-		return fmt.Errorf("failed to create JCAT file with checksums: %w", err)
-	}
-
-	// Add signature to JCAT file using certificate and private key
-	// with GPG:
-	//   gpg --detach-sign --sign --armor firmware.xml.zst
-	//   jcat-tool import firmware.xml.zst.jcat firmware.xml.zst firmware.xml.zst.asc
+	// Only invoke jcat-tool when signing keys are configured
 	if f.Config.Certificate != "" && f.Config.PrivateKey != "" {
+		// Create JCAT file with checksum
+		if err := jcatTool([]string{"self-sign", sig, file, "--kind", "sha256"}, wd); err != nil {
+			return fmt.Errorf("failed to create JCAT file with checksums: %w", err)
+		}
+
+		// Add signature to JCAT file using certificate and private key
+		// with GPG:
+		//   gpg --detach-sign --sign --armor firmware.xml.zst
+		//   jcat-tool import firmware.xml.zst.jcat firmware.xml.zst firmware.xml.zst.asc
 		if err := jcatTool([]string{"sign", sig, file, f.Config.Certificate, f.Config.PrivateKey}, wd); err != nil {
 			return fmt.Errorf("failed to add signature to JCAT file: %w", err)
 		}
