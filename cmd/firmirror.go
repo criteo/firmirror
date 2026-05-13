@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/alecthomas/kong"
 
@@ -159,6 +160,7 @@ func run() error {
 	}
 
 	slog.Info("Starting firmware processing", "vendors", len(fm.GetAllVendors()))
+	startTime := time.Now()
 
 	var hasError bool
 	for vendorName, vendor := range fm.GetAllVendors() {
@@ -172,6 +174,11 @@ func run() error {
 			hasError = true
 		}
 	}
+
+	slog.Info("Firmware processing completed",
+		"duration", time.Since(startTime).Round(time.Second),
+		"new_components", fm.GetNewComponentCount(),
+		"vendors_processed", len(fm.GetAllVendors()))
 
 	if hasError {
 		return fmt.Errorf("one or more vendors failed to process")

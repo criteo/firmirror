@@ -42,13 +42,13 @@ func (hv *HPEVendor) fetchCatalog(ctx context.Context) (*HPECatalog, error) {
 	indexurl := hv.BaseURL + "/current/fwrepodata/fwrepo.json"
 	jsondata, err := utils.DownloadFile(ctx, indexurl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloading HPE catalog from %s: %w", indexurl, err)
 	}
 	defer jsondata.Close()
 
 	var entries map[string]HPECatalogEntry
 	if err := json.NewDecoder(jsondata).Decode(&entries); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding HPE catalog JSON: %w", err)
 	}
 
 	catalog := &HPECatalog{
@@ -85,17 +85,19 @@ func (hv *HPEVendor) RetrieveFirmware(ctx context.Context, entry firmirror.Firmw
 	// Try to fetch the sidecar .json metadata (available in some repos, e.g. gen12)
 	jsonURL := hv.BaseURL + "/current/" + strings.TrimSuffix(hpeEntry.Filename, ".fwpkg") + ".json"
 	if resp, err := utils.DownloadFile(ctx, jsonURL); err == nil {
-		hpeEntry.payloadJSON, readErr := io.ReadAll(resp)
+		data, readErr := io.ReadAll(resp)
 		resp.Close()
 		if readErr != nil {
 			slog.Warn("Failed to read payload JSON sidecar", "url", jsonURL, "error", readErr)
+		} else {
+			hpeEntry.payloadJSON = data
 		}
 	}
 
 	filepath := filepath.Join(tmpDir, filepath.Base(hpeEntry.Filename))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := utils.DownloadFileToDest(ctx, hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
-			return err
+			return fmt.Errorf("downloading HPE firmware %s: %w", hpeEntry.Filename, err)
 		}
 	}
 
@@ -286,7 +288,7 @@ func getString(translations []HPETranslations, language string) (string, error) 
 func readFileFromZip(zipFile, filename string) ([]byte, error) {
 	archive, err := zip.OpenReader(zipFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening zip %s: %w", zipFile, err)
 	}
 	defer archive.Close()
 
@@ -294,12 +296,16 @@ func readFileFromZip(zipFile, filename string) ([]byte, error) {
 		if f.Name == filename {
 			reader, err := f.Open()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("opening %s in zip: %w", filename, err)
 			}
 			defer reader.Close()
 
-			return io.ReadAll(reader)
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				return nil, fmt.Errorf("reading %s from zip: %w", filename, err)
+			}
+			return data, nil
 		}
 	}
-	return nil, fmt.Errorf("file not found: %s", filename)
+	return nil, fmt.Errorf("file not found in zip: %s", filename)
 }

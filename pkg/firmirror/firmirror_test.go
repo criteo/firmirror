@@ -215,10 +215,10 @@ func TestFirmirrorSyncer_ProcessVendor(t *testing.T) {
 			retrieveErr: errors.New("retrieve failed"),
 		}
 
-		// Should not return error, but should continue processing
 		err := syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
-		assert.NoError(t, err, "ProcessVendor should not return error for individual firmware failures")
+		assert.Error(t, err, "ProcessVendor should return error when all entries fail")
+		assert.Contains(t, err.Error(), "all 1 firmware entries failed")
 	})
 
 	t.Run("ToAppstreamError", func(t *testing.T) {
@@ -235,10 +235,10 @@ func TestFirmirrorSyncer_ProcessVendor(t *testing.T) {
 			},
 		}
 
-		// Should not return error, but should continue processing
 		err := syncer.ProcessVendor(context.TODO(), mockVendor, "test-vendor")
 
-		assert.NoError(t, err, "ProcessVendor should not return error for individual firmware failures")
+		assert.Error(t, err, "ProcessVendor should return error when all entries fail")
+		assert.Contains(t, err.Error(), "all 1 firmware entries failed")
 		assert.Len(t, mockVendor.retrievedFiles, 1, "Firmware should be retrieved before appstream conversion")
 	})
 

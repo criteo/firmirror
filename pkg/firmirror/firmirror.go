@@ -79,6 +79,11 @@ func (f *FirmirrorSyncer) GetAllVendors() map[string]Vendor {
 	return maps.Clone(f.vendors)
 }
 
+// GetNewComponentCount returns the number of new components accumulated during this run
+func (f *FirmirrorSyncer) GetNewComponentCount() int {
+	return len(f.newComponents)
+}
+
 // ProcessVendor processes firmware for a given vendor using the interface.
 // Entries are processed concurrently up to Config.MaxConcurrency workers.
 func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vendorName string) error {
@@ -87,11 +92,11 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 
 	catalog, err := vendor.FetchCatalog(ctx)
 	if err != nil {
-		logger.Error("Failed to fetch catalog", "error", err)
-		return err
+		return fmt.Errorf("failed to fetch catalog for vendor %s: %w", vendorName, err)
 	}
 
 	entries := catalog.ListEntries()
+	total := len(entries)
 
 	sem := make(chan struct{}, f.Config.MaxConcurrency)
 	var wg sync.WaitGroup
@@ -99,13 +104,15 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 	processed := 0
 	skipped := 0
 	errors := 0
+	entryNum := 0
 
 	for _, entry := range entries {
 		fwName := entry.GetFilename()
+		entryNum++
 
 		// Check if firmware is already in metadata index (read-only map, safe for concurrent reads)
 		if f.existingIndex[fwName] {
-			logger.With("firmware", fwName).Info("Firmware already in metadata index, skipping")
+			logger.Info("Skipping firmware already in index", "progress", fmt.Sprintf("[%d/%d]", entryNum, total), "firmware", fwName)
 			skipped++
 			continue
 		}
@@ -120,11 +127,11 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 		}
 
 		wg.Add(1)
-		go func() {
+		go func(entryNum int) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			components := f.processEntry(ctx, vendor, vendorName, entry, fwName, logger)
+			components := f.processEntry(ctx, vendor, vendorName, entry, fwName, fmt.Sprintf("[%d/%d]", entryNum, total), logger)
 			if components == nil {
 				mu.Lock()
 				errors++
@@ -136,7 +143,7 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 			f.newComponents = append(f.newComponents, components...)
 			processed++
 			mu.Unlock()
-		}()
+		}(entryNum)
 	}
 
 	wg.Wait()
@@ -150,8 +157,8 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 
 // processEntry handles downloading, converting and packaging a single firmware entry.
 // Returns the resulting components, or nil on error.
-func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, vendorName string, entry FirmwareEntry, fwName string, logger *slog.Logger) []lvfs.Component {
-	entryLogger := logger.With("firmware", fwName)
+func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, vendorName string, entry FirmwareEntry, fwName string, progress string, logger *slog.Logger) []lvfs.Component {
+	entryLogger := logger.With("firmware", fwName, "progress", progress)
 	entryLogger.Info("Processing firmware")
 	start := time.Now()
 
@@ -222,7 +229,7 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.C
 	// Calculate firmware checksums (shared by all components)
 	sha1Hash, sha256Hash, err := calculateChecksums(fwPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("calculating firmware checksums: %w", err)
 	}
 
 	// Write a metainfo XML per component, add firmware checksums to each
@@ -240,11 +247,11 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.C
 		outBytes := []byte(xml.Header)
 		xmlBytes, err := xml.MarshalIndent(component, "", "  ")
 		if err != nil {
-			return err
+			return fmt.Errorf("marshaling metainfo XML for component %s: %w", component.ID, err)
 		}
 		outBytes = append(outBytes, xmlBytes...)
 		if err = os.WriteFile(metaPath, outBytes, 0644); err != nil {
-			return err
+			return fmt.Errorf("writing metainfo XML %s: %w", metaName, err)
 		}
 		metainfoPaths = append(metainfoPaths, metaPath)
 	}
@@ -252,12 +259,12 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.C
 	fwSig := filepath.Join(tmpDir, "firmware.jcat")
 	// sign payload
 	if err := f.signMetadata(ctx, fwSig, fwPath); err != nil {
-		return err
+		return fmt.Errorf("signing firmware payload: %w", err)
 	}
 	// sign each metainfo
 	for _, metaPath := range metainfoPaths {
 		if err := f.signMetadata(ctx, fwSig, metaPath); err != nil {
-			return err
+			return fmt.Errorf("signing metainfo %s: %w", metaPath, err)
 		}
 	}
 
@@ -270,8 +277,8 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.C
 	cmd := exec.CommandContext(ctx, "fwupdtool", fwupdArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		logger.Error("Failed to build package", "error", err, "output", string(out))
-		return err
+		logger.Error("fwupdtool build-cabinet failed", "error", err, "output", string(out))
+		return fmt.Errorf("fwupdtool build-cabinet for %s: %w", fwFile, err)
 	}
 
 	// Calculate CAB checksums (shared by all components)
@@ -314,7 +321,7 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.C
 func calculateChecksums(filepath string) (sha1Hash, sha256Hash string, err error) {
 	file, err := os.Open(filepath)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("opening %s: %w", filepath, err)
 	}
 	defer file.Close()
 
@@ -323,7 +330,7 @@ func calculateChecksums(filepath string) (sha1Hash, sha256Hash string, err error
 
 	// Use MultiWriter to compute both hashes in one pass
 	if _, err := io.Copy(io.MultiWriter(sha1Hasher, sha256Hasher), file); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("hashing %s: %w", filepath, err)
 	}
 
 	sha1Hash = hex.EncodeToString(sha1Hasher.Sum(nil))
@@ -471,7 +478,7 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	// Sign metadata
 	signaturePath := compressedPath + ".jcat"
 	if err := f.signMetadata(ctx, signaturePath, compressedPath); err != nil {
-		return err
+		return fmt.Errorf("signing metadata: %w", err)
 	}
 	defer os.Remove(signaturePath)
 
