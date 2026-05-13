@@ -76,7 +76,18 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 	defer stop()
 
-	if args.Signature.Certificate == "" || args.Signature.PrivateKey == "" {
+	certProvided := args.Signature.Certificate != ""
+	keyProvided := args.Signature.PrivateKey != ""
+	if certProvided && keyProvided {
+		if _, err := os.Stat(args.Signature.Certificate); err != nil {
+			return fmt.Errorf("certificate file not accessible: %s: %w", args.Signature.Certificate, err)
+		}
+		if _, err := os.Stat(args.Signature.PrivateKey); err != nil {
+			return fmt.Errorf("private key file not accessible: %s: %w", args.Signature.PrivateKey, err)
+		}
+	} else if certProvided || keyProvided {
+		return fmt.Errorf("both --sign.certificate and --sign.private-key must be provided together, or neither")
+	} else {
 		slog.Warn("No certificate or private key provided, metadata will not be signed")
 	}
 
