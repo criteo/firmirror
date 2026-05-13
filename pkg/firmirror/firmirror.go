@@ -42,11 +42,27 @@ func NewFirmirrorSyncer(config FirmirrorConfig, storage Storage) *FirmirrorSynce
 		slog.Error("Failed to create cache directory", "dir", config.CacheDir, "error", err)
 	}
 
+	cleanStaleWorkDirs(config.CacheDir)
+
 	return &FirmirrorSyncer{
 		Config:        config,
 		Storage:       storage,
 		vendors:       make(map[string]Vendor),
 		existingIndex: make(map[string]bool),
+	}
+}
+
+func cleanStaleWorkDirs(cacheDir string) {
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() && filepath.Ext(entry.Name()) == ".wrk" {
+			path := filepath.Join(cacheDir, entry.Name())
+			slog.Info("Cleaning stale work directory from previous run", "path", path)
+			os.RemoveAll(path)
+		}
 	}
 }
 
@@ -131,6 +147,7 @@ func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry
 	start := time.Now()
 
 	tmpDir := filepath.Join(f.Config.CacheDir, fwName+".wrk")
+	os.RemoveAll(tmpDir)
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
 		entryLogger.Error("Failed to create temp directory", "error", err)
 		return nil
@@ -225,12 +242,12 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.C
 
 	fwSig := filepath.Join(tmpDir, "firmware.jcat")
 	// sign payload
-	if err := f.signMetadata(fwSig, fwPath); err != nil {
+	if err := f.signMetadata(ctx, fwSig, fwPath); err != nil {
 		return err
 	}
 	// sign each metainfo
 	for _, metaPath := range metainfoPaths {
-		if err := f.signMetadata(fwSig, metaPath); err != nil {
+		if err := f.signMetadata(ctx, fwSig, metaPath); err != nil {
 			return err
 		}
 	}
@@ -241,7 +258,7 @@ func (f *FirmirrorSyncer) buildPackage(ctx context.Context, components []*lvfs.C
 	fwupdArgs := []string{"build-cabinet", cabPathInCache, fwPath}
 	fwupdArgs = append(fwupdArgs, metainfoPaths...)
 	fwupdArgs = append(fwupdArgs, fwSig)
-	cmd := exec.Command("fwupdtool", fwupdArgs...)
+	cmd := exec.CommandContext(ctx, "fwupdtool", fwupdArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		logger.Error("Failed to build package", "error", err, "output", string(out))
@@ -435,7 +452,7 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 
 	// Sign metadata
 	signaturePath := compressedPath + ".jcat"
-	if err := f.signMetadata(signaturePath, compressedPath); err != nil {
+	if err := f.signMetadata(ctx, signaturePath, compressedPath); err != nil {
 		return err
 	}
 	defer os.Remove(signaturePath)
@@ -488,10 +505,10 @@ func compressMetadata(filePath string) error {
 
 // signMetadata creates a JCAT signature file for the given file using jcat-tool
 // The jcat file contains checksums (SHA256, SHA512) and signature if signing keys are provided
-func (f *FirmirrorSyncer) signMetadata(sigPath, filePath string) error {
+func (f *FirmirrorSyncer) signMetadata(ctx context.Context, sigPath, filePath string) error {
 	jcatTool := func(args []string, wd string) error {
 		slog.Debug("Running jcat-tool", "args", args)
-		cmd := exec.Command("jcat-tool", args...)
+		cmd := exec.CommandContext(ctx, "jcat-tool", args...)
 		cmd.Dir = wd
 		output, err := cmd.CombinedOutput()
 		if err != nil {
