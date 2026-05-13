@@ -109,7 +109,7 @@ Pre-built images are published to `ghcr.io/premday/firmirror` via CI.
 | `--dell.machines-id` | Machine System IDs to filter (4-char hex, e.g. `0C60`). Can be specified multiple times. Omit to include all firmware | (optional) |
 | **HPE** | | |
 | `--hpe.enable` | Enable HPE firmware mirroring | `false` |
-| `--hpe.gens` | Generations to fetch (`gen10`, `gen11`, `gen12`) | `gen10,gen11,gen12` |
+| `--hpe.gens` | Generations to fetch (`gen8`–`gen12`) | `gen8,gen9,gen10,gen11,gen12` |
 | **S3 Storage** | | |
 | `--s3.enable` | Use S3 storage backend instead of local filesystem | `false` |
 | `--s3.bucket` | S3 bucket name | (required if S3 enabled) |
@@ -232,7 +232,7 @@ Machine IDs are 4-character hexadecimal codes representing Dell machine types (e
 
 ### HPE
 
-Fetches firmware from HPE SDR repositories (`https://downloads.linux.hpe.com/SDR/repo/`). Supports Gen10, Gen11, and Gen12 servers. Only `.fwpkg` packages are included (the LVFS-compatible format for HPE firmware).
+Fetches firmware from HPE SDR repositories (`https://downloads.linux.hpe.com/SDR/repo/`). Supports Gen8 through Gen12 servers. Only `.fwpkg` packages are included (the LVFS-compatible format for HPE firmware).
 
 ## Development
 

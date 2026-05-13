@@ -44,13 +44,13 @@ func (dv *DellVendor) FetchCatalog(ctx context.Context) (firmirror.Catalog, erro
 func (dv *DellVendor) fetchCatalog(ctx context.Context) (*DellCatalog, error) {
 	catalogBody, err := utils.DownloadFile(ctx, dv.BaseURL+"/catalog/catalog.xml.gz")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloading Dell catalog: %w", err)
 	}
 	defer catalogBody.Close()
 
 	rawCatalog, err := gzip.NewReader(catalogBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decompressing Dell catalog: %w", err)
 	}
 	defer rawCatalog.Close()
 
@@ -68,7 +68,7 @@ func (dv *DellVendor) fetchCatalog(ctx context.Context) (*DellCatalog, error) {
 	}
 	err = xmlDecoder.Decode(&dellCatalog)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing Dell catalog XML: %w", err)
 	}
 
 	return &dellCatalog, nil
@@ -116,7 +116,7 @@ func (dv *DellVendor) RetrieveFirmware(ctx context.Context, entry firmirror.Firm
 	filepath := filepath.Join(tmpDir, filepath.Base(fwPath))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := utils.DownloadFileToDest(ctx, dv.BaseURL+"/"+fwPath, filepath); err != nil {
-			return err
+			return fmt.Errorf("downloading Dell firmware %s: %w", fwPath, err)
 		}
 	}
 
