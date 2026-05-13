@@ -27,7 +27,9 @@ func createTestSyncer(t *testing.T) (*FirmirrorSyncer, string) {
 		MaxConcurrency: 2,
 	}
 
-	return NewFirmirrorSyncer(config, storage), tmpDir
+	syncer, err := NewFirmirrorSyncer(config, storage)
+	require.NoError(t, err)
+	return syncer, tmpDir
 }
 
 // MockVendor implements the Vendor interface for testing
@@ -367,11 +369,12 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
 
-		syncer := NewFirmirrorSyncer(FirmirrorConfig{
+		syncer, err := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir:    filepath.Join(tmpDir, "cache"),
 			Certificate: "",
 			PrivateKey:  "",
 		}, storage)
+		require.NoError(t, err)
 
 		// Create test metadata
 		testComponents := &lvfs.Components{
@@ -463,11 +466,12 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFirmirrorSyncer(FirmirrorConfig{
+		syncer, err := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir:    filepath.Join(tmpDir, "cache"),
 			Certificate: "",
 			PrivateKey:  "",
 		}, storage)
+		require.NoError(t, err)
 
 		// Create corrupted metadata file
 		metadataPath := filepath.Join(tmpDir, "metadata.xml.zst")
@@ -487,11 +491,12 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFirmirrorSyncer(FirmirrorConfig{
+		syncer, err := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir:    filepath.Join(tmpDir, "cache"),
 			Certificate: "",
 			PrivateKey:  "",
 		}, storage)
+		require.NoError(t, err)
 
 		// Add new components
 		syncer.newComponents = []lvfs.Component{
@@ -562,11 +567,12 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFirmirrorSyncer(FirmirrorConfig{
+		syncer, err := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir:    filepath.Join(tmpDir, "cache"),
 			Certificate: "",
 			PrivateKey:  "",
 		}, storage)
+		require.NoError(t, err)
 
 		// Set existing metadata
 		syncer.existingMetadata = &lvfs.Components{
@@ -658,11 +664,12 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFirmirrorSyncer(FirmirrorConfig{
+		syncer, err := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir:    filepath.Join(tmpDir, "cache"),
 			Certificate: "",
 			PrivateKey:  "",
 		}, storage)
+		require.NoError(t, err)
 
 		// Set existing metadata with a component
 		syncer.existingMetadata = &lvfs.Components{
@@ -751,11 +758,12 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
-		syncer := NewFirmirrorSyncer(FirmirrorConfig{
+		syncer, err := NewFirmirrorSyncer(FirmirrorConfig{
 			CacheDir:    filepath.Join(tmpDir, "cache"),
 			Certificate: "",
 			PrivateKey:  "",
 		}, storage)
+		require.NoError(t, err)
 
 		// Add components without location tags
 		syncer.newComponents = []lvfs.Component{
