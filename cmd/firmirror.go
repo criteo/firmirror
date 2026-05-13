@@ -69,13 +69,8 @@ func main() {
 	var storage firmirror.Storage
 	var err error
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-
 	// Monitor for shutdown signal
-	go func() {
-		<-ctx.Done()
-		slog.Warn("Shutdown signal received, waiting for current operations to complete...")
-	}()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 
 	if args.Signature.Certificate == "" || args.Signature.PrivateKey == "" {
 		slog.Warn("No certificate or private key provided, metadata will not be signed")
@@ -130,12 +125,11 @@ func main() {
 	}
 
 	defer func() {
+		stop()
 		slog.Info("Saving repository metadata")
 		if err := fm.SaveMetadata(context.Background()); err != nil {
 			slog.Error("Failed to save metadata", "error", err)
 		}
-
-		stop()
 	}()
 
 	// Load existing metadata to avoid reprocessing
