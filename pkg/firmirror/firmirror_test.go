@@ -40,14 +40,14 @@ type MockVendor struct {
 	retrieveContent string
 }
 
-func (m *MockVendor) FetchCatalog() (Catalog, error) {
+func (m *MockVendor) FetchCatalog(ctx context.Context) (Catalog, error) {
 	if m.fetchErr != nil {
 		return nil, m.fetchErr
 	}
 	return m.catalog, nil
 }
 
-func (m *MockVendor) RetrieveFirmware(entry FirmwareEntry, tmpDir string) error {
+func (m *MockVendor) RetrieveFirmware(ctx context.Context, entry FirmwareEntry, tmpDir string) error {
 	if m.retrieveErr != nil {
 		return m.retrieveErr
 	}

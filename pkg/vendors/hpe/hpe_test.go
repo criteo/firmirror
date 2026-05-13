@@ -2,6 +2,7 @@ package hpe
 
 import (
 	"archive/zip"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +30,7 @@ func TestHPEVendor_FetchCatalog(t *testing.T) {
 		BaseURL: server.URL,
 	}
 
-	catalog, err := vendor.FetchCatalog()
+	catalog, err := vendor.FetchCatalog(context.Background())
 	assert.NoError(t, err, "FetchCatalog should not return an error")
 	assert.NotNil(t, catalog, "Catalog should not be nil")
 
@@ -64,7 +65,7 @@ func TestHPEVendor_RetrieveFirmware(t *testing.T) {
 	}
 
 	// Test retrieving firmware
-	err := vendor.RetrieveFirmware(entry, tmpDir)
+	err := vendor.RetrieveFirmware(context.Background(), entry, tmpDir)
 	assert.NoError(t, err, "RetrieveFirmware should not return an error")
 
 	// Check that file was created

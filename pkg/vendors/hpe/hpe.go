@@ -2,6 +2,7 @@ package hpe
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -25,8 +26,8 @@ func NewHPEVendor(repo string) *HPEVendor {
 }
 
 // FetchCatalog implements the Vendor interface
-func (hv *HPEVendor) FetchCatalog() (firmirror.Catalog, error) {
-	catalog, err := hv.fetchCatalog()
+func (hv *HPEVendor) FetchCatalog(ctx context.Context) (firmirror.Catalog, error) {
+	catalog, err := hv.fetchCatalog(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -36,9 +37,9 @@ func (hv *HPEVendor) FetchCatalog() (firmirror.Catalog, error) {
 	return filteredCatalog, nil
 }
 
-func (hv *HPEVendor) fetchCatalog() (*HPECatalog, error) {
+func (hv *HPEVendor) fetchCatalog(ctx context.Context) (*HPECatalog, error) {
 	indexurl := hv.BaseURL + "/current/fwrepodata/fwrepo.json"
-	jsondata, err := utils.DownloadFile(indexurl)
+	jsondata, err := utils.DownloadFile(ctx, indexurl)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func (hv *HPEVendor) filterCatalog(catalog *HPECatalog) *HPECatalog {
 }
 
 // RetrieveFirmware implements the Vendor interface
-func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) error {
+func (hv *HPEVendor) RetrieveFirmware(ctx context.Context, entry firmirror.FirmwareEntry, tmpDir string) error {
 	hpeEntry, ok := entry.(*HPEFirmwareEntry)
 	if !ok {
 		return fmt.Errorf("invalid entry type for HPE vendor")
@@ -82,14 +83,14 @@ func (hv *HPEVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir stri
 
 	// Try to fetch the sidecar .json metadata (available in some repos, e.g. gen12)
 	jsonURL := hv.BaseURL + "/current/" + strings.TrimSuffix(hpeEntry.Filename, ".fwpkg") + ".json"
-	if resp, err := utils.DownloadFile(jsonURL); err == nil {
+	if resp, err := utils.DownloadFile(ctx, jsonURL); err == nil {
 		hpeEntry.payloadJSON, _ = io.ReadAll(resp)
 		resp.Close()
 	}
 
 	filepath := filepath.Join(tmpDir, filepath.Base(hpeEntry.Filename))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		if err := utils.DownloadFileToDest(hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
+		if err := utils.DownloadFileToDest(ctx, hv.BaseURL+"/current/"+hpeEntry.Filename, filepath); err != nil {
 			return err
 		}
 	}

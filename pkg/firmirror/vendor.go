@@ -1,13 +1,17 @@
 package firmirror
 
-import "github.com/premday/firmirror/pkg/lvfs"
+import (
+	"context"
+
+	"github.com/premday/firmirror/pkg/lvfs"
+)
 
 type Vendor interface {
 	// FetchCatalog retrieves the catalog of firmware for the vendor.
-	FetchCatalog() (Catalog, error)
+	FetchCatalog(ctx context.Context) (Catalog, error)
 	// RetrieveFirmware downloads the firmware file for the given firmware entry to tmpDir.
 	// For vendors like HPE, this step is required before processing.
-	RetrieveFirmware(entry FirmwareEntry, tmpDir string) error
+	RetrieveFirmware(ctx context.Context, entry FirmwareEntry, tmpDir string) error
 }
 
 // Catalog represents a generic catalog of firmware entries.

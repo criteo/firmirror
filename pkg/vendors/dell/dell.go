@@ -2,6 +2,7 @@ package dell
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"html"
@@ -29,8 +30,8 @@ func NewDellVendor(systemIDs []string) *DellVendor {
 	return vendor
 }
 
-func (dv *DellVendor) FetchCatalog() (firmirror.Catalog, error) {
-	catalog, err := dv.fetchCatalog()
+func (dv *DellVendor) FetchCatalog(ctx context.Context) (firmirror.Catalog, error) {
+	catalog, err := dv.fetchCatalog(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +41,8 @@ func (dv *DellVendor) FetchCatalog() (firmirror.Catalog, error) {
 	return filteredCatalog, nil
 }
 
-func (dv *DellVendor) fetchCatalog() (*DellCatalog, error) {
-	catalogBody, err := utils.DownloadFile(dv.BaseURL + "/catalog/catalog.xml.gz")
+func (dv *DellVendor) fetchCatalog(ctx context.Context) (*DellCatalog, error) {
+	catalogBody, err := utils.DownloadFile(ctx, dv.BaseURL+"/catalog/catalog.xml.gz")
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +106,7 @@ func (dv *DellVendor) filterCatalog(catalog *DellCatalog) *DellCatalog {
 	return &filteredCatalog
 }
 
-func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir string) error {
+func (dv *DellVendor) RetrieveFirmware(ctx context.Context, entry firmirror.FirmwareEntry, tmpDir string) error {
 	dellEntry, ok := entry.(*DellFirmwareEntry)
 	if !ok {
 		return fmt.Errorf("invalid entry type for Dell vendor")
@@ -114,7 +115,7 @@ func (dv *DellVendor) RetrieveFirmware(entry firmirror.FirmwareEntry, tmpDir str
 	fwPath := dellEntry.DellSoftwareComponent.Path
 	filepath := filepath.Join(tmpDir, filepath.Base(fwPath))
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		if err := utils.DownloadFileToDest(dv.BaseURL+"/"+fwPath, filepath); err != nil {
+		if err := utils.DownloadFileToDest(ctx, dv.BaseURL+"/"+fwPath, filepath); err != nil {
 			return err
 		}
 	}

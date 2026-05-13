@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,12 +21,16 @@ var httpClient = &http.Client{
 	},
 }
 
-func DownloadFile(url string) (io.ReadCloser, error) {
+func DownloadFile(ctx context.Context, url string) (io.ReadCloser, error) {
 	var resp *http.Response
 	var err error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		req, err := http.NewRequest("GET", url, nil)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %w", err)
 		}
@@ -34,6 +39,9 @@ func DownloadFile(url string) (io.ReadCloser, error) {
 
 		resp, err = httpClient.Do(req)
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			if attempt < maxRetries {
 				time.Sleep(time.Duration(attempt+1) * time.Second)
 				continue
@@ -59,14 +67,14 @@ func DownloadFile(url string) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries+1, err)
 }
 
-func DownloadFileToDest(url, file string) error {
+func DownloadFileToDest(ctx context.Context, url, file string) error {
 	out, err := os.Create(file)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
 
-	resp, err := DownloadFile(url)
+	resp, err := DownloadFile(ctx, url)
 	if err != nil {
 		return err
 	}
