@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -420,11 +421,14 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 		}
 	}
 
-	// Build final components structure
+	// Build final components structure (sorted by ID for deterministic output)
 	components := &lvfs.Components{
 		Origin: "firmirror",
 	}
-	for _, component := range componentMap {
+	keys := slices.Collect(maps.Keys(componentMap))
+	slices.Sort(keys)
+	for _, k := range keys {
+		component := componentMap[k]
 		// Ensure each release has a location tag
 		for i := range component.Releases {
 			release := &component.Releases[i]
