@@ -67,7 +67,7 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 	logger := slog.With("vendor", vendorName)
 	logger.Debug("Fetching catalog")
 
-	catalog, err := vendor.FetchCatalog()
+	catalog, err := vendor.FetchCatalog(ctx)
 	if err != nil {
 		logger.Error("Failed to fetch catalog", "error", err)
 		return err
@@ -137,7 +137,7 @@ func (f *FirmirrorSyncer) processEntry(ctx context.Context, vendor Vendor, entry
 	}
 
 	t0 := time.Now()
-	if err := vendor.RetrieveFirmware(entry, tmpDir); err != nil {
+	if err := vendor.RetrieveFirmware(ctx, entry, tmpDir); err != nil {
 		entryLogger.Error("Failed to retrieve firmware", "error", err)
 		os.RemoveAll(tmpDir)
 		return nil

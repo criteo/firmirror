@@ -2,6 +2,7 @@ package dell
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/xml"
 	"net/http"
 	"net/http/httptest"
@@ -103,7 +104,7 @@ func TestDellVendor_FetchCatalog(t *testing.T) {
 			SystemIDs: nil, // No filter
 		}
 
-		catalog, err := vendor.FetchCatalog()
+		catalog, err := vendor.FetchCatalog(context.Background())
 		assert.NoError(t, err, "FetchCatalog should not return an error")
 		assert.NotNil(t, catalog, "Catalog should not be nil")
 
@@ -125,7 +126,7 @@ func TestDellVendor_FetchCatalog(t *testing.T) {
 			SystemIDs: []string{"0C60"}, // Filter for specific system
 		}
 
-		catalog, err := vendor.FetchCatalog()
+		catalog, err := vendor.FetchCatalog(context.Background())
 		assert.NoError(t, err, "FetchCatalog should not return an error")
 		assert.NotNil(t, catalog, "Catalog should not be nil")
 
@@ -142,7 +143,7 @@ func TestDellVendor_FetchCatalog(t *testing.T) {
 			SystemIDs: []string{"9999"}, // Non-existing system
 		}
 
-		catalog, err := vendor.FetchCatalog()
+		catalog, err := vendor.FetchCatalog(context.Background())
 		assert.NoError(t, err, "FetchCatalog should not return an error")
 		assert.NotNil(t, catalog, "Catalog should not be nil")
 
@@ -178,7 +179,7 @@ func TestDellVendor_RetrieveFirmware(t *testing.T) {
 	}
 
 	// Test retrieving firmware
-	err := vendor.RetrieveFirmware(entry, tmpDir)
+	err := vendor.RetrieveFirmware(context.Background(), entry, tmpDir)
 	assert.NoError(t, err, "RetrieveFirmware should not return an error")
 
 	// Check that file was created
