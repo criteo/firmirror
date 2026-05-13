@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -84,8 +85,11 @@ func (hv *HPEVendor) RetrieveFirmware(ctx context.Context, entry firmirror.Firmw
 	// Try to fetch the sidecar .json metadata (available in some repos, e.g. gen12)
 	jsonURL := hv.BaseURL + "/current/" + strings.TrimSuffix(hpeEntry.Filename, ".fwpkg") + ".json"
 	if resp, err := utils.DownloadFile(ctx, jsonURL); err == nil {
-		hpeEntry.payloadJSON, _ = io.ReadAll(resp)
+		hpeEntry.payloadJSON, readErr := io.ReadAll(resp)
 		resp.Close()
+		if readErr != nil {
+			slog.Warn("Failed to read payload JSON sidecar", "url", jsonURL, "error", readErr)
+		}
 	}
 
 	filepath := filepath.Join(tmpDir, filepath.Base(hpeEntry.Filename))

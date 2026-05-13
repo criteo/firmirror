@@ -148,7 +148,10 @@ func (dfe *DellFirmwareEntry) ToAppstream() ([]lvfs.Component, error) {
 }
 
 func processFirmware(fw DellSoftwareComponent) ([]lvfs.Component, error) {
-	fwName, _ := getString(fw.Name, "en")
+	fwName, err := getString(fw.Name, "en")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get firmware name: %w", err)
+	}
 
 	description, err := getString(fw.Description, "en")
 	if err != nil {
@@ -192,7 +195,10 @@ func processFirmware(fw DellSoftwareComponent) ([]lvfs.Component, error) {
 			ProjectLicense:  "proprietary",
 		}
 
-		devName, _ := getString(dev.DellTranslatable, "en")
+		devName, err := getString(dev.DellTranslatable, "en")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get device name for component %s: %w", dev.ComponentID, err)
+		}
 		out.Name = devName
 		out.Summary = fwName
 		out.Description = lvfs.Description{

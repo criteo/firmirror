@@ -96,6 +96,7 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 	var mu sync.Mutex
 	processed := 0
 	skipped := 0
+	errors := 0
 
 	for _, entry := range entries {
 		fwName := entry.GetFilename()
@@ -123,6 +124,9 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 
 			components := f.processEntry(ctx, vendor, entry, fwName, logger)
 			if components == nil {
+				mu.Lock()
+				errors++
+				mu.Unlock()
 				return
 			}
 
@@ -135,7 +139,10 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 
 	wg.Wait()
 
-	logger.Info("Completed vendor processing", "processed", processed, "skipped", skipped, "total", len(entries))
+	logger.Info("Completed vendor processing", "processed", processed, "skipped", skipped, "errors", errors, "total", len(entries))
+	if errors > 0 && processed == 0 {
+		return fmt.Errorf("all %d firmware entries failed for vendor %s", errors, vendorName)
+	}
 	return nil
 }
 

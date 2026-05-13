@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -57,44 +58,55 @@ func main() {
 		panic(cli.Command())
 	}
 
+	if err := run(); err != nil {
+		slog.Error("firmirror exited with error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	// Check if bin tools are available
 	for _, bin := range []string{"fwupdtool", "jcat-tool"} {
 		if _, err := exec.LookPath(bin); err != nil {
-			slog.Error(bin + " is required but not found in PATH, aborting")
-			return
+			return fmt.Errorf("%s is required but not found in PATH", bin)
 		}
 	}
 
-	// Create storage backend
-	var storage firmirror.Storage
-	var err error
-
 	// Monitor for shutdown signal
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+	defer stop()
 
 	if args.Signature.Certificate == "" || args.Signature.PrivateKey == "" {
 		slog.Warn("No certificate or private key provided, metadata will not be signed")
 	}
 
+	var storage firmirror.Storage
+	var err error
+
 	if args.S3.Enable {
-		storage, err = firmirror.NewS3Storage(context.Background(), args.S3.Bucket, args.S3.Prefix, args.S3.Region, args.S3.Endpoint)
+		storage, err = firmirror.NewS3Storage(ctx, args.S3.Bucket, args.S3.Prefix, args.S3.Region, args.S3.Endpoint)
 		if err != nil {
-			slog.Error("Failed to create S3 storage backend", "error", err)
-			return
+			return fmt.Errorf("failed to create S3 storage backend: %w", err)
 		}
 		slog.Info("Using S3 storage backend", "bucket", args.S3.Bucket, "prefix", args.S3.Prefix)
 	} else {
 		if args.OutputDir == "" {
-			slog.Error("Output directory is required when using local storage")
-			return
+			return fmt.Errorf("output directory is required when using local storage")
 		}
 
 		storage, err = firmirror.NewLocalStorage(args.OutputDir)
 		if err != nil {
-			slog.Error("Failed to create local storage backend", "error", err)
-			return
+			return fmt.Errorf("failed to create local storage backend: %w", err)
 		}
 		slog.Info("Using local filesystem storage", "path", args.OutputDir)
+	}
+
+	if args.Concurrency < 1 {
+		return fmt.Errorf("concurrency must be at least 1, got %d", args.Concurrency)
+	}
+
+	if !args.HPEFlags.Enable && !args.DellFlags.Enable {
+		return fmt.Errorf("no vendor enabled")
 	}
 
 	config := firmirror.FirmirrorConfig{
@@ -104,20 +116,9 @@ func main() {
 		MaxConcurrency: args.Concurrency,
 	}
 
-	if args.Concurrency < 1 {
-		slog.Error("Concurrency must be at least 1", "value", args.Concurrency)
-		return
-	}
-
-	if !args.HPEFlags.Enable && !args.DellFlags.Enable {
-		slog.Error("No vendor enabled, exiting")
-		return
-	}
-
 	fm, err := firmirror.NewFirmirrorSyncer(config, storage)
 	if err != nil {
-		slog.Error("Failed to create syncer", "error", err)
-		return
+		return fmt.Errorf("failed to create syncer: %w", err)
 	}
 
 	if args.HPEFlags.Enable {
@@ -136,18 +137,19 @@ func main() {
 	defer func() {
 		stop()
 		slog.Info("Saving repository metadata")
-		if err := fm.SaveMetadata(context.Background()); err != nil {
-			slog.Error("Failed to save metadata", "error", err)
+		if saveErr := fm.SaveMetadata(context.Background()); saveErr != nil {
+			slog.Error("Failed to save metadata", "error", saveErr)
 		}
 	}()
 
 	// Load existing metadata to avoid reprocessing
 	if err := fm.LoadMetadata(ctx); err != nil {
-		slog.Error("Failed to load existing metadata", "error", err)
+		return fmt.Errorf("failed to load existing metadata: %w", err)
 	}
 
 	slog.Info("Starting firmware processing", "vendors", len(fm.GetAllVendors()))
 
+	var hasError bool
 	for vendorName, vendor := range fm.GetAllVendors() {
 		if ctx.Err() != nil {
 			break
@@ -156,6 +158,12 @@ func main() {
 		slog.Info("Processing vendor", "name", vendorName)
 		if err := fm.ProcessVendor(ctx, vendor, vendorName); err != nil && err != context.Canceled {
 			slog.Error("Failed to process vendor", "vendor", vendorName, "error", err)
+			hasError = true
 		}
 	}
+
+	if hasError {
+		return fmt.Errorf("one or more vendors failed to process")
+	}
+	return nil
 }
