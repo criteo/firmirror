@@ -54,8 +54,12 @@ func (dv *DellVendor) fetchCatalog(ctx context.Context) (*DellCatalog, error) {
 	}
 	defer rawCatalog.Close()
 
+	return parseDellCatalog(rawCatalog)
+}
+
+func parseDellCatalog(r io.Reader) (*DellCatalog, error) {
 	// The XML decoder only reads UTF-8, so we need to convert the UTF-16 to UTF-8
-	unicodeReader := transform.NewReader(rawCatalog, unicode.BOMOverride(unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()))
+	unicodeReader := transform.NewReader(r, unicode.BOMOverride(unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewDecoder()))
 
 	var dellCatalog DellCatalog
 
@@ -66,8 +70,7 @@ func (dv *DellVendor) fetchCatalog(ctx context.Context) (*DellCatalog, error) {
 		// and fail if it's not
 		return input, nil
 	}
-	err = xmlDecoder.Decode(&dellCatalog)
-	if err != nil {
+	if err := xmlDecoder.Decode(&dellCatalog); err != nil {
 		return nil, fmt.Errorf("parsing Dell catalog XML: %w", err)
 	}
 
@@ -162,7 +165,7 @@ func processFirmware(fw DellSoftwareComponent) ([]lvfs.Component, error) {
 	if fw.RebootRequired {
 		rebootMessage, err := getString(fw.ImportantInfo, "en")
 		if err != nil {
-			return nil, err
+			rebootMessage = "Reboot is required for the update to take effect."
 		}
 		rebootCustom = []lvfs.Custom{
 			{Key: "LVFS::DeviceFlags", Value: "skips-restart"},
