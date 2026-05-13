@@ -378,7 +378,8 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 
 		// Create test metadata
 		testComponents := &lvfs.Components{
-			Origin: "firmirror",
+			Origin:        "firmirror",
+			SchemaVersion: lvfs.MetadataSchemaVersion,
 			Component: []lvfs.Component{
 				{
 					Type:            "firmware",
@@ -460,6 +461,66 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		assert.NoError(t, err, "Should not error when metadata doesn't exist")
 		assert.Nil(t, syncer.existingMetadata, "Existing metadata should be nil")
 		assert.Empty(t, syncer.existingIndex, "Index should be empty")
+	})
+
+		t.Run("SchemaVersionMismatchClearsIndex", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		storage, err := NewLocalStorage(tmpDir)
+		require.NoError(t, err)
+
+		syncer, err := NewFirmirrorSyncer(FirmirrorConfig{
+			CacheDir:    filepath.Join(tmpDir, "cache"),
+			Certificate: "",
+			PrivateKey:  "",
+		}, storage)
+		require.NoError(t, err)
+
+		testComponents := &lvfs.Components{
+			Origin:        "firmirror",
+			SchemaVersion: 0,
+			Component: []lvfs.Component{
+				{
+					Type:            "firmware",
+					ID:              "com.test.firmware1",
+					Name:            "Test Firmware 1",
+					MetadataLicense: "proprietary",
+					Releases: []lvfs.Release{
+						{
+							Version: "1.0.0",
+							Checksums: []lvfs.Checksum{
+								{
+									Filename: "firmware1.bin",
+									Type:     "sha256",
+									Value:    "abc123",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		metadataPath := filepath.Join(tmpDir, "metadata.xml.zst")
+		file, err := os.Create(metadataPath)
+		require.NoError(t, err)
+
+		zstWriter, err := zstd.NewWriter(file)
+		require.NoError(t, err)
+
+		xmlData, err := xml.Marshal(testComponents)
+		require.NoError(t, err)
+		_, err = zstWriter.Write([]byte(xml.Header))
+		require.NoError(t, err)
+		_, err = zstWriter.Write(xmlData)
+		require.NoError(t, err)
+		zstWriter.Close()
+		file.Close()
+
+		err = syncer.LoadMetadata(context.TODO())
+		require.NoError(t, err, "Should load metadata successfully")
+
+		assert.NotNil(t, syncer.existingMetadata, "Existing metadata should be loaded as fallback")
+		assert.Empty(t, syncer.existingIndex, "Index should be empty when schema version mismatches, forcing reprocessing")
 	})
 
 	t.Run("HandlesCorruptedMetadata", func(t *testing.T) {
@@ -557,6 +618,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		assert.Len(t, components.Component, 1, "Should have 1 component")
 		assert.Equal(t, "com.test.firmware1", components.Component[0].ID)
 		assert.Equal(t, "firmirror", components.Origin)
+		assert.Equal(t, lvfs.MetadataSchemaVersion, components.SchemaVersion, "SchemaVersion should be set in saved metadata")
 
 		// Verify location tag was added
 		assert.Regexp(t, `^[a-f0-9]{64}-firmware1\.bin\.cab$`, components.Component[0].Releases[0].Location,
