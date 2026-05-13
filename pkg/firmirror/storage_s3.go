@@ -16,11 +16,10 @@ import (
 
 // S3Storage implements Storage interface for AWS S3 or S3-compatible storage
 type S3Storage struct {
-	client     *s3.Client
-	uploader   *manager.Uploader
-	downloader *manager.Downloader
-	bucket     string
-	prefix     string // optional prefix for all keys
+	client   *s3.Client
+	uploader *manager.Uploader
+	bucket   string
+	prefix   string // optional prefix for all keys
 }
 
 func NewS3Storage(ctx context.Context, bucket, prefix, region, endpoint string) (*S3Storage, error) {
@@ -53,11 +52,10 @@ func NewS3Storage(ctx context.Context, bucket, prefix, region, endpoint string) 
 	}
 
 	return &S3Storage{
-		client:     client,
-		uploader:   manager.NewUploader(client),
-		downloader: manager.NewDownloader(client),
-		bucket:     bucket,
-		prefix:     prefix,
+		client:   client,
+		uploader: manager.NewUploader(client),
+		bucket:   bucket,
+		prefix:   prefix,
 	}, nil
 }
 
@@ -102,9 +100,7 @@ func (s *S3Storage) Write(ctx context.Context, key string, data io.Reader) error
 func (s *S3Storage) Read(ctx context.Context, key string) (io.ReadCloser, error) {
 	fullKey := s.buildKey(key)
 
-	// Download to buffer
-	buf := manager.NewWriteAtBuffer([]byte{})
-	_, err := s.downloader.Download(ctx, buf, &s3.GetObjectInput{
+	resp, err := s.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(fullKey),
 	})
@@ -112,8 +108,7 @@ func (s *S3Storage) Read(ctx context.Context, key string) (io.ReadCloser, error)
 		return nil, fmt.Errorf("failed to download from S3: %w", err)
 	}
 
-	// Return buffer as ReadCloser
-	return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+	return resp.Body, nil
 }
 
 // Exists checks if a key exists in S3

@@ -1,6 +1,7 @@
 package firmirror
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -443,21 +444,27 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	outBytes := []byte(xml.Header)
 	xmlBytes, err := xml.MarshalIndent(components, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal metadata XML: %w", err)
 	}
 	outBytes = append(outBytes, xmlBytes...)
 
-	// Write uncompressed metadata to temporary file for compression
-	metadataPath := filepath.Join(f.Config.CacheDir, "metadata.xml")
-	if err := os.WriteFile(metadataPath, outBytes, 0644); err != nil {
-		return err
+	// Compress metadata in-memory (avoids disk round-trip)
+	var compressedBuf bytes.Buffer
+	zstWriter, err := zstd.NewWriter(&compressedBuf)
+	if err != nil {
+		return fmt.Errorf("failed to create zstd writer: %w", err)
 	}
-	defer os.Remove(metadataPath)
+	if _, err := zstWriter.Write(outBytes); err != nil {
+		return fmt.Errorf("failed to compress metadata: %w", err)
+	}
+	if err := zstWriter.Close(); err != nil {
+		return fmt.Errorf("failed to finalize zstd compression: %w", err)
+	}
 
-	// Compress metadata
-	compressedPath := metadataPath + ".zst"
-	if err := compressMetadata(metadataPath); err != nil {
-		return err
+	// Write compressed data to temp file for signing (jcat-tool requires a file path)
+	compressedPath := filepath.Join(f.Config.CacheDir, "metadata.xml.zst")
+	if err := os.WriteFile(compressedPath, compressedBuf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write compressed metadata to temp file: %w", err)
 	}
 	defer os.Remove(compressedPath)
 
@@ -468,48 +475,28 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	}
 	defer os.Remove(signaturePath)
 
-	// Write compressed metadata to storage
-	for _, filePath := range []string{compressedPath, signaturePath} {
-		file, err := os.Open(filePath)
-		if err != nil {
-			return fmt.Errorf("failed to open file: %w", err)
-		}
-		defer file.Close()
-		if err := f.Storage.Write(ctx, filepath.Base(filePath), file); err != nil {
-			return fmt.Errorf("failed to write file to storage: %w", err)
-		}
+	// Write signature to storage first (metadata is the commit point)
+	sigFile, err := os.Open(signaturePath)
+	if err != nil {
+		return fmt.Errorf("failed to open signature file: %w", err)
+	}
+	sigData, err := io.ReadAll(sigFile)
+	sigFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to read signature file: %w", err)
+	}
+	if err := f.Storage.Write(ctx, filepath.Base(signaturePath), bytes.NewReader(sigData)); err != nil {
+		return fmt.Errorf("failed to write signature to storage: %w", err)
+	}
+
+	// Write compressed metadata to storage (commit point — written last)
+	if err := f.Storage.Write(ctx, "metadata.xml.zst", bytes.NewReader(compressedBuf.Bytes())); err != nil {
+		return fmt.Errorf("failed to write metadata to storage: %w", err)
 	}
 
 	logger.Info("Metadata saved successfully",
 		"total_merged_components", len(componentMap),
 		"new_components", len(f.newComponents))
-
-	return nil
-}
-
-func compressMetadata(filePath string) error {
-	inputFile, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer inputFile.Close()
-
-	outputFile, err := os.Create(filePath + ".zst")
-	if err != nil {
-		return err
-	}
-	defer outputFile.Close()
-
-	zstWriter, err := zstd.NewWriter(outputFile)
-	if err != nil {
-		return err
-	}
-	defer zstWriter.Close()
-
-	_, err = io.Copy(zstWriter, inputFile)
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
