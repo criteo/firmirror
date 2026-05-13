@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/premday/firmirror/pkg/lvfs"
@@ -101,9 +102,9 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 	sem := make(chan struct{}, f.Config.MaxConcurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	processed := 0
-	skipped := 0
-	errors := 0
+	var processed atomic.Int64
+	var skipped int
+	var errors atomic.Int64
 	entryNum := 0
 
 	for _, entry := range entries {
@@ -133,24 +134,25 @@ func (f *FirmirrorSyncer) ProcessVendor(ctx context.Context, vendor Vendor, vend
 
 			components := f.processEntry(ctx, vendor, vendorName, entry, fwName, fmt.Sprintf("[%d/%d]", entryNum, total), logger)
 			if components == nil {
-				mu.Lock()
-				errors++
-				mu.Unlock()
+				errors.Add(1)
 				return
 			}
 
 			mu.Lock()
 			f.newComponents = append(f.newComponents, components...)
-			processed++
 			mu.Unlock()
+			processed.Add(1)
 		}(entryNum)
 	}
 
 	wg.Wait()
 
-	logger.Info("Completed vendor processing", "processed", processed, "skipped", skipped, "errors", errors, "total", len(entries))
-	if errors > 0 && processed == 0 {
-		return fmt.Errorf("all %d firmware entries failed for vendor %s", errors, vendorName)
+	p := processed.Load()
+	s := skipped
+	e := errors.Load()
+	logger.Info("Completed vendor processing", "processed", p, "skipped", s, "errors", e, "total", len(entries))
+	if e > 0 && p == 0 {
+		return fmt.Errorf("all %d firmware entries failed for vendor %s", e, vendorName)
 	}
 	return nil
 }
