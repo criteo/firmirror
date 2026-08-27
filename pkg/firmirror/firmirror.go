@@ -19,8 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/premday/firmirror/pkg/lvfs"
 	"github.com/klauspost/compress/zstd"
+	"github.com/premday/firmirror/pkg/lvfs"
 )
 
 type FirmirrorConfig struct {
@@ -486,27 +486,26 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	}
 	defer os.Remove(compressedPath)
 
-	// Sign metadata (only when signing keys are configured)
-	if f.Config.Certificate != "" && f.Config.PrivateKey != "" {
-		signaturePath := compressedPath + ".jcat"
-		if err := f.signMetadata(ctx, signaturePath, compressedPath); err != nil {
-			return fmt.Errorf("signing metadata: %w", err)
-		}
-		defer os.Remove(signaturePath)
+	// Always create a JCAT file containing checksums. When signing keys are
+	// configured, signMetadata also adds a PKCS#7 signature.
+	signaturePath := compressedPath + ".jcat"
+	if err := f.signMetadata(ctx, signaturePath, compressedPath); err != nil {
+		return fmt.Errorf("creating metadata JCAT: %w", err)
+	}
+	defer os.Remove(signaturePath)
 
-		// Write signature to storage first (metadata is the commit point)
-		sigFile, err := os.Open(signaturePath)
-		if err != nil {
-			return fmt.Errorf("failed to open signature file: %w", err)
-		}
-		sigData, err := io.ReadAll(sigFile)
-		sigFile.Close()
-		if err != nil {
-			return fmt.Errorf("failed to read signature file: %w", err)
-		}
-		if err := f.Storage.Write(ctx, filepath.Base(signaturePath), bytes.NewReader(sigData)); err != nil {
-			return fmt.Errorf("failed to write signature to storage: %w", err)
-		}
+	// Write the JCAT file to storage first (metadata is the commit point).
+	sigFile, err := os.Open(signaturePath)
+	if err != nil {
+		return fmt.Errorf("failed to open metadata JCAT file: %w", err)
+	}
+	sigData, err := io.ReadAll(sigFile)
+	sigFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to read metadata JCAT file: %w", err)
+	}
+	if err := f.Storage.Write(ctx, filepath.Base(signaturePath), bytes.NewReader(sigData)); err != nil {
+		return fmt.Errorf("failed to write metadata JCAT to storage: %w", err)
 	}
 
 	// Write compressed metadata to storage (commit point — written last)
@@ -521,8 +520,8 @@ func (f *FirmirrorSyncer) SaveMetadata(ctx context.Context) error {
 	return nil
 }
 
-// signMetadata creates a JCAT signature file for the given file using jcat-tool
-// The jcat file contains checksums (SHA256, SHA512) and signature if signing keys are provided
+// signMetadata creates a JCAT file for the given file using jcat-tool.
+// The JCAT file contains a SHA256 checksum and a signature if signing keys are provided.
 func (f *FirmirrorSyncer) signMetadata(ctx context.Context, sigPath, filePath string) error {
 	jcatTool := func(args []string, wd string) error {
 		slog.Debug("Running jcat-tool", "args", args)
@@ -539,14 +538,14 @@ func (f *FirmirrorSyncer) signMetadata(ctx context.Context, sigPath, filePath st
 	file := filepath.Base(filePath)
 	sig := filepath.Base(sigPath)
 
-	// Only invoke jcat-tool when signing keys are configured
-	if f.Config.Certificate != "" && f.Config.PrivateKey != "" {
-		// Create JCAT file with checksum
-		if err := jcatTool([]string{"self-sign", sig, file, "--kind", "sha256"}, wd); err != nil {
-			return fmt.Errorf("failed to create JCAT file with checksums: %w", err)
-		}
+	// A checksum-only JCAT is still required when cryptographic signing is
+	// disabled, notably because firmware.jcat is included in every CAB.
+	if err := jcatTool([]string{"self-sign", sig, file, "--kind", "sha256"}, wd); err != nil {
+		return fmt.Errorf("failed to create JCAT file with checksums: %w", err)
+	}
 
-		// Add signature to JCAT file using certificate and private key
+	if f.Config.Certificate != "" && f.Config.PrivateKey != "" {
+		// Add a signature to the JCAT file using the certificate and private key.
 		// with GPG:
 		//   gpg --detach-sign --sign --armor firmware.xml.zst
 		//   jcat-tool import firmware.xml.zst.jcat firmware.xml.zst firmware.xml.zst.asc

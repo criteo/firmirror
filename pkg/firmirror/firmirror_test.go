@@ -6,14 +6,56 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
-	"github.com/premday/firmirror/pkg/lvfs"
 	"github.com/klauspost/compress/zstd"
+	"github.com/premday/firmirror/pkg/lvfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	binDir, err := os.MkdirTemp("", "firmirror-test-bin-")
+	if err != nil {
+		panic(err)
+	}
+	jcatTool := filepath.Join(binDir, "jcat-tool")
+	script := `#!/bin/sh
+if [ -n "$JCAT_TOOL_LOG" ]; then
+	printf '%s\n' "$*" >> "$JCAT_TOOL_LOG"
+fi
+if [ "$1" = "self-sign" ]; then
+	: > "$2"
+fi
+`
+	if err := os.WriteFile(jcatTool, []byte(script), 0755); err != nil {
+		panic(err)
+	}
+	fwupdTool := filepath.Join(binDir, "fwupdtool")
+	fwupdScript := `#!/bin/sh
+if [ "$1" != "build-cabinet" ]; then
+	exit 1
+fi
+output="$2"
+shift 2
+for input in "$@"; do
+	test -f "$input" || exit 1
+done
+: > "$output"
+`
+	if err := os.WriteFile(fwupdTool, []byte(fwupdScript), 0755); err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH")); err != nil {
+		panic(err)
+	}
+
+	code := m.Run()
+	os.RemoveAll(binDir)
+	os.Exit(code)
+}
 
 // createTestSyncer creates a test configuration with local storage
 func createTestSyncer(t *testing.T) (*FirmirrorSyncer, string) {
@@ -346,8 +388,7 @@ func TestFirmirrorSyncer_BuildPackage(t *testing.T) {
 		err := os.WriteFile(firmwareFile, []byte("test firmware"), 0644)
 		require.NoError(t, err, "Should create test firmware file")
 
-		// Note: This will fail without fwupdtool, but we can test XML creation
-		syncer.buildPackage(context.TODO(), components, firmwareFilename, tmpDir)
+		require.NoError(t, syncer.buildPackage(context.TODO(), components, firmwareFilename, tmpDir))
 
 		// Verify metainfo XML was created (named 0.metainfo.xml)
 		metainfoPath := filepath.Join(tmpDir, "0.metainfo.xml")
@@ -360,6 +401,42 @@ func TestFirmirrorSyncer_BuildPackage(t *testing.T) {
 		assert.Contains(t, string(content), "<?xml version", "Should contain XML header")
 		assert.Contains(t, string(content), "com.test.firmware", "Should contain component ID")
 		assert.Contains(t, string(content), "Test Firmware", "Should contain component name")
+	})
+}
+
+func TestFirmirrorSyncer_SignMetadata(t *testing.T) {
+	t.Run("CreatesChecksumJCATWithoutSigningKeys", func(t *testing.T) {
+		syncer, tmpDir := createTestSyncer(t)
+		payloadPath := filepath.Join(tmpDir, "firmware.bin")
+		signaturePath := filepath.Join(tmpDir, "firmware.jcat")
+		logPath := filepath.Join(tmpDir, "jcat-tool.log")
+		require.NoError(t, os.WriteFile(payloadPath, []byte("firmware"), 0644))
+		t.Setenv("JCAT_TOOL_LOG", logPath)
+
+		require.NoError(t, syncer.signMetadata(context.Background(), signaturePath, payloadPath))
+		assert.FileExists(t, signaturePath)
+		log, err := os.ReadFile(logPath)
+		require.NoError(t, err)
+		assert.Equal(t, "self-sign firmware.jcat firmware.bin --kind sha256\n", string(log))
+	})
+
+	t.Run("AddsSignatureWhenSigningKeysAreConfigured", func(t *testing.T) {
+		syncer, tmpDir := createTestSyncer(t)
+		syncer.Config.Certificate = "/secrets/signing.cert"
+		syncer.Config.PrivateKey = "/secrets/signing.key"
+		payloadPath := filepath.Join(tmpDir, "firmware.bin")
+		signaturePath := filepath.Join(tmpDir, "firmware.jcat")
+		logPath := filepath.Join(tmpDir, "jcat-tool.log")
+		require.NoError(t, os.WriteFile(payloadPath, []byte("firmware"), 0644))
+		t.Setenv("JCAT_TOOL_LOG", logPath)
+
+		require.NoError(t, syncer.signMetadata(context.Background(), signaturePath, payloadPath))
+		log, err := os.ReadFile(logPath)
+		require.NoError(t, err)
+		commands := strings.Split(strings.TrimSpace(string(log)), "\n")
+		require.Len(t, commands, 2)
+		assert.Equal(t, "self-sign firmware.jcat firmware.bin --kind sha256", commands[0])
+		assert.Equal(t, "sign firmware.jcat firmware.bin /secrets/signing.cert /secrets/signing.key", commands[1])
 	})
 }
 
@@ -463,7 +540,7 @@ func TestFirmirrorSyncer_LoadMetadata(t *testing.T) {
 		assert.Empty(t, syncer.existingIndex, "Index should be empty")
 	})
 
-		t.Run("SchemaVersionMismatchClearsIndex", func(t *testing.T) {
+	t.Run("SchemaVersionMismatchClearsIndex", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		storage, err := NewLocalStorage(tmpDir)
 		require.NoError(t, err)
@@ -600,6 +677,7 @@ func TestFirmirrorSyncer_SaveMetadata(t *testing.T) {
 		// Verify compressed file exists
 		metadataZstPath := filepath.Join(tmpDir, "metadata.xml.zst")
 		assert.FileExists(t, metadataZstPath, "Compressed metadata should exist")
+		assert.FileExists(t, metadataZstPath+".jcat", "Checksum JCAT should exist without signing keys")
 
 		// Read and verify content
 		file, err := os.Open(metadataZstPath)
